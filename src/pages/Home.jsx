@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, ShieldCheck, Leaf, Award, Star, ShoppingBag, CheckCircle, Heart } from 'lucide-react';
+import { ArrowRight, Sparkles, ShieldCheck, Leaf, Award, Star, ShoppingBag, CheckCircle, Heart, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import { api } from '../services/api';
 import ProductCard from '../components/ProductCard';
 import TrustBadges from '../components/TrustBadges';
@@ -13,13 +13,19 @@ const Home = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reviews, setReviews] = useState([]);
+  const [reviewIndex, setReviewIndex] = useState(0);
   const { addToast } = useToast();
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const prods = await api.getProducts();
+        const [prods, revs] = await Promise.all([
+          api.getProducts(),
+          api.getReviews(),
+        ]);
         setFeaturedProducts(prods);
+        setReviews(revs.filter(r => r.isActive !== false));
       } catch (err) {
         console.error('Home load error:', err);
       } finally {
@@ -29,9 +35,11 @@ const Home = () => {
     loadData();
 
     window.addEventListener('aravez_catalog_updated', loadData);
+    window.addEventListener('aravez_reviews_updated', loadData);
     window.addEventListener('storage', loadData);
     return () => {
       window.removeEventListener('aravez_catalog_updated', loadData);
+      window.removeEventListener('aravez_reviews_updated', loadData);
       window.removeEventListener('storage', loadData);
     };
   }, []);
@@ -47,30 +55,6 @@ const Home = () => {
     if (activeTab === 'teas') return p.category === 'Organic Teas' || p.category === 'Projecters';
     return true;
   }).slice(0, 6);
-
-  const testimonials = [
-    {
-      name: 'Sophia Sterling',
-      role: 'Verified Buyer',
-      rating: 5,
-      comment: 'The Green Tea & Aloe Glow Serum is hands down the best organic skincare investment I have ever made. My skin texture has completely cleared up in just 2 weeks!',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      name: 'Dr. Marcus Vance',
-      role: 'Holistic Practitioner',
-      rating: 5,
-      comment: 'Aravez sources botanical herbs of the highest adaptogenic purity. The Himalayan Herbal Elixir is now a daily essential for both myself and my patients.',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-    },
-    {
-      name: 'Aria Chen',
-      role: 'Yoga Instructor',
-      rating: 5,
-      comment: 'From the eco-friendly compostable packaging to the soothing aroma of the Emerald Mint Tea, Aravez represents the golden standard of conscious living.',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
-    },
-  ];
 
   return (
     <div className="space-y-16 sm:space-y-24 pb-16">
@@ -246,48 +230,113 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 7. CUSTOMER TESTIMONIALS */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest block mb-1">
-            Real Experiences
-          </span>
-          <h2 className="font-serif text-3xl font-bold text-gray-900">
-            Stories From Our Community
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {testimonials.map((item, idx) => (
-            <div
-              key={idx}
-              className="bg-white rounded-3xl p-8 border border-emerald-100/90 shadow-card flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center gap-1 text-amber-400 mb-4">
-                  {[...Array(item.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-amber-400" />
-                  ))}
-                </div>
-                <p className="text-gray-700 text-sm italic leading-relaxed mb-6">
-                  "{item.comment}"
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                <img
-                  src={item.avatar}
-                  alt={item.name}
-                  className="w-11 h-11 rounded-full object-cover border border-emerald-200"
-                />
-                <div>
-                  <h4 className="font-bold text-sm text-gray-900">{item.name}</h4>
-                  <span className="text-xs text-emerald-700 font-medium">{item.role}</span>
-                </div>
-              </div>
+      {/* 7. DYNAMIC CUSTOMER & CLIENT REVIEWS */}
+      {reviews.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12 gap-4">
+            <div className="text-left">
+              <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest block mb-1">
+                Real Client Experiences
+              </span>
+              <h2 className="font-serif text-3xl sm:text-4xl font-bold text-gray-900">
+                Stories From Our Community
+              </h2>
             </div>
-          ))}
-        </div>
-      </section>
+
+            {/* Mover Navigation (< and >) */}
+            {reviews.length > 3 && (
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-slate-500">
+                  {reviewIndex + 1} - {Math.min(reviewIndex + 3, reviews.length)} of {reviews.length}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setReviewIndex(prev => (prev > 0 ? prev - 1 : Math.max(0, reviews.length - 3)))}
+                    className="p-3 rounded-full bg-white hover:bg-emerald-50 text-slate-800 border border-slate-200 shadow-sm transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                    aria-label="Previous reviews"
+                    title="Previous"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-emerald-900" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReviewIndex(prev => (prev < reviews.length - 3 ? prev + 1 : 0))}
+                    className="p-3 rounded-full bg-white hover:bg-emerald-50 text-slate-800 border border-slate-200 shadow-sm transition-all hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
+                    aria-label="Next reviews"
+                    title="Next"
+                  >
+                    <ChevronRight className="w-4 h-4 text-emerald-900" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Carousel Slider Window (Strict Single Row - Never Shifts Downwards) */}
+          <div className="overflow-hidden py-2 -my-2">
+            <div
+              className="flex transition-transform duration-500 ease-out"
+              style={{
+                transform: `translateX(-${reviewIndex * (100 / (reviews.length <= 3 ? reviews.length : 3))}%)`,
+              }}
+            >
+              {reviews.map((item, idx) => (
+                <div
+                  key={item._id || idx}
+                  className="w-full sm:w-1/2 lg:w-1/3 shrink-0 px-3 flex"
+                >
+                  <div className="bg-white rounded-3xl p-8 border border-emerald-100/90 shadow-card flex flex-col justify-between w-full hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-1 text-amber-400">
+                          {[...Array(item.rating || 5)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 fill-amber-400" />
+                          ))}
+                        </div>
+                        <Quote className="w-6 h-6 text-emerald-200 group-hover:text-emerald-400 transition-colors" />
+                      </div>
+                      <p className="text-gray-700 text-sm italic leading-relaxed mb-6">
+                        "{item.comment}"
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3.5 pt-4 border-t border-gray-100 mt-auto">
+                      <img
+                        src={item.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                        alt={item.name}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-emerald-200 shadow-xs shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-sm text-gray-900 truncate">{item.name}</h4>
+                        <span className="text-xs text-emerald-700 font-medium block truncate">
+                          {item.businessName ? `${item.businessName} • ${item.role}` : item.role}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Dots Navigation Indicator */}
+          {reviews.length > 3 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              {Array.from({ length: reviews.length - 2 }).map((_, dotIdx) => (
+                <button
+                  key={dotIdx}
+                  type="button"
+                  onClick={() => setReviewIndex(dotIdx)}
+                  className={`h-2 rounded-full transition-all cursor-pointer ${
+                    reviewIndex === dotIdx ? 'w-8 bg-emerald-700' : 'w-2 bg-slate-300 hover:bg-slate-400'
+                  }`}
+                  aria-label={`Go to slide ${dotIdx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
     </div>
   );

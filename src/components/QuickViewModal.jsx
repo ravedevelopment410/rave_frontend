@@ -11,7 +11,13 @@ const QuickViewModal = () => {
   useEffect(() => {
     setActiveImageIndex(0);
     setQuantity(1);
-    setActiveTab('features');
+    if (quickViewProduct?.features && quickViewProduct.features.length > 0) {
+      setActiveTab('features');
+    } else if (quickViewProduct?.specifications) {
+      setActiveTab('specs');
+    } else {
+      setActiveTab('features');
+    }
   }, [quickViewProduct]);
 
   if (!quickViewProduct) return null;
@@ -344,19 +350,36 @@ const QuickViewModal = () => {
 
               {activeTab === 'specs' && product.specifications && (
                 <div className="space-y-4">
-                  <h4 className="font-serif font-bold text-base text-slate-900">
-                    Technical Specifications
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-serif font-bold text-base text-slate-900">
+                      Technical Specifications & Parameters
+                    </h4>
+                    <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full">
+                      ✓ Commercial Grade AV
+                    </span>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {(typeof product.specifications === 'string'
                       ? product.specifications.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
                       : Array.isArray(product.specifications) ? product.specifications : [product.specifications]
-                    ).map((spec, idx) => (
-                      <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100/80">
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <span className="font-semibold leading-relaxed">{spec}</span>
-                      </div>
-                    ))}
+                    ).map((spec, idx) => {
+                      const hasColon = spec.includes(':');
+                      if (hasColon) {
+                        const [k, ...v] = spec.split(':');
+                        return (
+                          <div key={idx} className="flex flex-col justify-between p-3.5 bg-slate-50 hover:bg-emerald-50/60 rounded-2xl border border-slate-200/90 transition-colors shadow-xs">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">{k.trim()}</span>
+                            <span className="text-xs font-extrabold text-slate-900 mt-1">{v.join(':').trim()}</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-800 bg-emerald-50/60 p-3.5 rounded-2xl border border-emerald-200/80 shadow-xs">
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          <span className="font-bold leading-relaxed">{spec}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

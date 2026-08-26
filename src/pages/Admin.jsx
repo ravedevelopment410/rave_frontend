@@ -30,7 +30,9 @@ import {
   Loader2,
   Lock,
   EyeOff,
-  LogOut
+  LogOut,
+  Star,
+  Quote
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -83,6 +85,7 @@ const Admin = () => {
   const [contacts, setContacts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [sliders, setSliders] = useState([]);
+  const [reviews, setReviews] = useState([]);
 
   // Search & Filter
   const [productSearch, setProductSearch] = useState('');
@@ -97,10 +100,14 @@ const Admin = () => {
   const [isAddSliderOpen, setIsAddSliderOpen] = useState(false);
   const [editingSlider, setEditingSlider] = useState(null);
   const [isUploadingSliderImage, setIsUploadingSliderImage] = useState(false);
+  const [isAddReviewOpen, setIsAddReviewOpen] = useState(false);
+  const [editingReview, setEditingReview] = useState(null);
+  const [isUploadingReviewAvatar, setIsUploadingReviewAvatar] = useState(false);
 
   const sliderFileInputRef = useRef(null);
   const quickSliderInputRef = useRef(null);
   const productFileInputRef = useRef(null);
+  const reviewFileInputRef = useRef(null);
 
   // Product Form State
   const initialProductForm = {
@@ -139,35 +146,41 @@ const Admin = () => {
 
   // Slider Form State
   const initialSliderForm = {
-    badge: '',
-    title: '',
-    subtitle: '',
-    btnText: '',
-    btnLink: '',
-    secondaryBtnText: '',
-    secondaryBtnLink: '',
     image: '',
-    floatingText: '',
     isActive: true,
   };
   const [sliderForm, setSliderForm] = useState(initialSliderForm);
+
+  // Review Form State
+  const initialReviewForm = {
+    name: '',
+    role: 'Commercial Client',
+    businessName: '',
+    rating: 5,
+    comment: '',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    isActive: true,
+  };
+  const [reviewForm, setReviewForm] = useState(initialReviewForm);
 
   // Load all admin data
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const [prods, offs, msgs, ords, slds] = await Promise.all([
+      const [prods, offs, msgs, ords, slds, revs] = await Promise.all([
         api.getProducts(),
         api.getOffers(),
         api.getContacts(),
         api.getOrders(),
         api.getSliders(),
+        api.getReviews(),
       ]);
       setProducts(prods);
       setOffers(offs);
       setContacts(msgs);
       setOrders(ords);
       setSliders(slds);
+      setReviews(revs);
     } catch (err) {
       console.error('Failed to load admin data:', err);
       addToast('Error loading management data', 'error');
@@ -180,8 +193,10 @@ const Admin = () => {
     loadAdminData();
 
     window.addEventListener('aravez_orders_updated', loadAdminData);
+    window.addEventListener('aravez_reviews_updated', loadAdminData);
     return () => {
       window.removeEventListener('aravez_orders_updated', loadAdminData);
+      window.removeEventListener('aravez_reviews_updated', loadAdminData);
     };
   }, []);
 
@@ -387,8 +402,9 @@ const Admin = () => {
 
     try {
       if (editingProduct) {
-        await api.updateProduct(editingProduct._id, payload);
-        setProducts(prev => prev.map(p => (p._id === editingProduct._id ? { ...p, ...payload } : p)));
+        const updated = await api.updateProduct(editingProduct._id, payload);
+        setProducts(prev => prev.map(p => (p._id === editingProduct._id ? { ...p, ...payload, ...updated } : p)));
+        window.dispatchEvent(new Event('aravez_catalog_updated'));
         addToast(`Product "${payload.name}" updated successfully!`, 'success');
       } else {
         const created = await api.createProduct(payload);
@@ -513,9 +529,8 @@ const Admin = () => {
     }
 
     const payload = {
-      ...sliderForm,
-      title: sliderForm.title || '',
-      subtitle: sliderForm.subtitle || '',
+      image: sliderForm.image,
+      isActive: sliderForm.isActive !== false,
     };
 
     try {
@@ -539,15 +554,7 @@ const Admin = () => {
   const handleEditSlider = (slide) => {
     setEditingSlider(slide);
     setSliderForm({
-      badge: slide.badge || '',
-      title: slide.title || '',
-      subtitle: slide.subtitle || '',
-      btnText: slide.btnText || '',
-      btnLink: slide.btnLink || '',
-      secondaryBtnText: '',
-      secondaryBtnLink: '',
       image: slide.image,
-      floatingText: '',
       isActive: slide.isActive !== false,
     });
     setIsAddSliderOpen(true);
@@ -606,6 +613,89 @@ const Admin = () => {
       addToast(`Order ${orderId} deleted`, 'info');
     } catch (err) {
       addToast('Failed to delete order', 'error');
+    }
+  };
+
+  // --- REVIEWS ACTIONS ---
+  const handleReviewAvatarUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploadingReviewAvatar(true);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result;
+        try {
+          const uploadRes = await api.uploadImage(base64, 'aravez_reviews');
+          const finalUrl = uploadRes.url || base64;
+          setReviewForm(prev => ({ ...prev, avatar: finalUrl }));
+        } catch {
+          setReviewForm(prev => ({ ...prev, avatar: base64 }));
+        } finally {
+          setIsUploadingReviewAvatar(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveReview = async (e) => {
+    if (e) e.preventDefault();
+    if (!reviewForm.name || !reviewForm.comment) {
+      addToast('Please provide customer name and review comment', 'error');
+      return;
+    }
+
+    try {
+      if (editingReview) {
+        const updated = await api.updateReview(editingReview._id, reviewForm);
+        setReviews(prev => prev.map(r => (r._id === editingReview._id ? { ...r, ...reviewForm, ...updated } : r)));
+        addToast(`Review from "${reviewForm.name}" updated successfully!`, 'success');
+      } else {
+        const created = await api.createReview(reviewForm);
+        setReviews(prev => [created, ...prev.filter(r => r._id !== created._id)]);
+        addToast(`Review from "${reviewForm.name}" published to Landing Page! ⭐`, 'success');
+      }
+      setIsAddReviewOpen(false);
+      setEditingReview(null);
+      setReviewForm(initialReviewForm);
+    } catch (err) {
+      addToast('Failed to save review', 'error');
+    }
+  };
+
+  const handleEditReview = (rev) => {
+    setEditingReview(rev);
+    setReviewForm({
+      name: rev.name || '',
+      role: rev.role || 'Commercial Client',
+      businessName: rev.businessName || '',
+      rating: rev.rating || 5,
+      comment: rev.comment || '',
+      avatar: rev.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+      isActive: rev.isActive !== false,
+    });
+    setIsAddReviewOpen(true);
+  };
+
+  const handleDeleteReview = async (id, name) => {
+    if (!window.confirm(`Delete review from "${name}"?`)) return;
+    try {
+      await api.deleteReview(id);
+      setReviews(prev => prev.filter(r => r._id !== id));
+      addToast('Review deleted', 'info');
+    } catch (err) {
+      addToast('Failed to delete review', 'error');
+    }
+  };
+
+  const handleToggleReviewActive = async (rev) => {
+    const newActive = !rev.isActive;
+    try {
+      await api.updateReview(rev._id, { ...rev, isActive: newActive });
+      setReviews(prev => prev.map(r => (r._id === rev._id ? { ...r, isActive: newActive } : r)));
+      addToast('Review visibility updated', 'success');
+    } catch (err) {
+      addToast('Failed to update status', 'error');
     }
   };
 
@@ -770,6 +860,7 @@ const Admin = () => {
             { id: 'products', label: 'Products Manager', icon: Package, count: products.length },
             { id: 'contacts', label: 'Customer Inquiries', icon: Mail, count: contacts.length },
             { id: 'orders', label: 'Orders Manager', icon: ShoppingBag, count: orders.length },
+            { id: 'reviews', label: 'Reviews Manager', icon: Star, count: reviews.length },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1318,6 +1409,122 @@ const Admin = () => {
           </div>
         )}
 
+        {/* ======================= REVIEWS MANAGER TAB ======================= */}
+        {activeTab === 'reviews' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Action Bar */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-serif font-bold text-xl text-slate-900 flex items-center gap-2">
+                  <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
+                  <span>Stories & Reviews Manager</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Manage real customer stories, ratings, client photos, and corporate testimonials shown on the landing page.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingReview(null);
+                  setReviewForm(initialReviewForm);
+                  setIsAddReviewOpen(true);
+                }}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-5 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/20 transition-all hover:scale-102 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add New Review</span>
+              </button>
+            </div>
+
+            {/* Reviews Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {reviews.length === 0 ? (
+                <div className="col-span-full bg-white rounded-3xl p-12 text-center border border-dashed border-slate-300">
+                  <Star className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <h4 className="font-serif font-bold text-slate-700 text-base">No Customer Reviews Yet</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Click "Add New Review" to publish your first client story with star rating, photo, and company name to the landing page!
+                  </p>
+                </div>
+              ) : (
+                reviews.map((rev) => (
+                  <div
+                    key={rev._id}
+                    className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between hover:shadow-md transition-all space-y-4 relative group"
+                  >
+                    <div>
+                      {/* Top Row: Rating & Active Status */}
+                      <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-1 text-amber-400">
+                          {[...Array(rev.rating || 5)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 fill-amber-400" />
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleReviewActive(rev)}
+                          className={`text-[11px] font-bold px-3 py-1 rounded-full border transition-all cursor-pointer ${
+                            rev.isActive !== false
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-slate-100 text-slate-500 border-slate-200'
+                          }`}
+                        >
+                          {rev.isActive !== false ? '● Live on Landing' : '✕ Hidden'}
+                        </button>
+                      </div>
+
+                      {/* Comment Message */}
+                      <p className="text-xs text-slate-700 italic leading-relaxed pt-3">
+                        "{rev.comment}"
+                      </p>
+                    </div>
+
+                    {/* Customer Profile & Actions Footer */}
+                    <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={rev.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                          alt={rev.name}
+                          className="w-10 h-10 rounded-full object-cover border border-emerald-200 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-xs text-slate-900 truncate">{rev.name}</h4>
+                          <span className="text-[11px] text-emerald-700 font-medium block truncate">
+                            {rev.businessName ? `${rev.businessName} • ${rev.role}` : rev.role}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Edit / Delete Buttons */}
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEditReview(rev)}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-800 transition-colors cursor-pointer"
+                          title="Edit Review"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReview(rev._id, rev.name)}
+                          className="p-2 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors cursor-pointer"
+                          title="Delete Review"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* ----------------- FULL SCREEN HERO SLIDER CREATION & EDITING STUDIO ----------------- */}
@@ -1471,6 +1678,216 @@ const Admin = () => {
                 </div>
 
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------- FULL SCREEN REVIEW CREATION & EDITING STUDIO ----------------- */}
+      {isAddReviewOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-100/95 backdrop-blur-md overflow-y-auto animate-fade-in flex flex-col min-h-screen">
+          {/* Top Sticky Navigation Bar */}
+          <div className="sticky top-0 z-30 bg-emerald-950 text-white px-6 py-4 shadow-xl border-b border-emerald-900 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAddReviewOpen(false)}
+                className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+                <span>Close Studio</span>
+              </button>
+              <div className="h-6 w-[1px] bg-emerald-800" />
+              <div>
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                  <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                  <span>{editingReview ? 'Edit Community Review' : 'Create New Community Review'}</span>
+                </h2>
+                <span className="text-xs text-emerald-300">
+                  Manage client testimonials, ratings & business feedback for Aravez Landing Page
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveReview}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-emerald-950/30 flex items-center gap-2 transition-all hover:scale-102 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>{editingReview ? 'Update Review' : 'Publish Review'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Form Content */}
+          <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8 space-y-6">
+            <form onSubmit={handleSaveReview} className="space-y-6">
+              
+              {/* Reviewer Details Card */}
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6">
+                <h3 className="font-serif font-bold text-lg text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-emerald-700" />
+                  <span>Client & Organization Information</span>
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">Customer / Client Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Rajesh Sharma"
+                      value={reviewForm.name}
+                      onChange={(e) => setReviewForm({ ...reviewForm, name: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">Business / Organization Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Apex Educational Trust / TechCorp"
+                      value={reviewForm.businessName}
+                      onChange={(e) => setReviewForm({ ...reviewForm, businessName: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">Designation / Role</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. IT Director / Verified Client"
+                      value={reviewForm.role}
+                      onChange={(e) => setReviewForm({ ...reviewForm, role: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1.5">Rating (1 to 5 Stars)</label>
+                    <div className="flex items-center gap-2 pt-1.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                          className="p-1 cursor-pointer transition-transform hover:scale-125"
+                        >
+                          <Star
+                            className={`w-7 h-7 ${
+                              star <= reviewForm.rating
+                                ? 'text-amber-400 fill-amber-400'
+                                : 'text-slate-300'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      <span className="text-xs font-extrabold text-slate-700 ml-2">
+                        {reviewForm.rating} of 5 Stars
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Avatar / Photo Upload */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1.5">Client Photo / Company Logo</label>
+                  <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <img
+                      src={reviewForm.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                      alt="Avatar preview"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-emerald-300 shadow-sm shrink-0"
+                    />
+                    <div className="flex-1 space-y-2 w-full">
+                      <input
+                        type="file"
+                        ref={reviewFileInputRef}
+                        accept="image/*"
+                        onChange={handleReviewAvatarUpload}
+                        className="hidden"
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={isUploadingReviewAvatar}
+                          onClick={() => reviewFileInputRef.current?.click()}
+                          className="bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold px-4 py-2 rounded-xl border border-slate-200 shadow-xs flex items-center gap-2 cursor-pointer transition-colors"
+                        >
+                          {isUploadingReviewAvatar ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                              <span>Uploading Photo...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Camera className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>Upload Photo / Logo</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Or enter direct photo URL..."
+                        value={reviewForm.avatar}
+                        onChange={(e) => setReviewForm({ ...reviewForm, avatar: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Review Comment */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1.5">Review Message / Feedback *</label>
+                  <textarea
+                    rows={4}
+                    required
+                    placeholder="Write client testimonial or feedback regarding Aravez AV installation, products, or service..."
+                    value={reviewForm.comment}
+                    onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed font-medium"
+                  />
+                </div>
+
+                {/* Active Toggle */}
+                <div className="flex items-center gap-3 pt-2">
+                  <input
+                    type="checkbox"
+                    id="reviewIsActive"
+                    checked={reviewForm.isActive}
+                    onChange={(e) => setReviewForm({ ...reviewForm, isActive: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <label htmlFor="reviewIsActive" className="text-xs font-bold text-slate-800 cursor-pointer">
+                    Show immediately in "Stories From Our Community" on Landing Page
+                  </label>
+                </div>
+
+              </div>
+
+              {/* Bottom Submit Action */}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddReviewOpen(false)}
+                  className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-8 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white shadow-lg shadow-emerald-950/20 cursor-pointer flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{editingReview ? 'Save & Update Review' : 'Publish Review to Storefront'}</span>
+                </button>
+              </div>
+
             </form>
           </div>
         </div>

@@ -93,6 +93,53 @@ let FALLBACK_SUBSCRIBERS = [
   { _id: 'sub-3', email: 'serena.botanicals@gmail.com', createdAt: new Date().toISOString() },
 ];
 
+let FALLBACK_REVIEWS = [];
+
+const getStoredCustomReviews = () => {
+  try {
+    const raw = localStorage.getItem('aravez_custom_reviews');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveStoredCustomReview = (newReview) => {
+  try {
+    const existing = getStoredCustomReviews();
+    const updated = [newReview, ...existing.filter(r => r._id !== newReview._id)];
+    localStorage.setItem('aravez_custom_reviews', JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to save custom review to localStorage:', e);
+  }
+};
+
+const removeStoredCustomReview = (id) => {
+  try {
+    const existing = getStoredCustomReviews();
+    const updated = existing.filter(r => r._id !== id);
+    localStorage.setItem('aravez_custom_reviews', JSON.stringify(updated));
+  } catch (e) {}
+};
+
+const getDeletedReviewIds = () => {
+  try {
+    const raw = localStorage.getItem('aravez_deleted_reviews');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const trackDeletedReviewId = (id) => {
+  try {
+    const existing = getDeletedReviewIds();
+    if (!existing.includes(id)) {
+      localStorage.setItem('aravez_deleted_reviews', JSON.stringify([...existing, id]));
+    }
+  } catch (e) {}
+};
+
 const getStoredCustomProducts = () => {
   try {
     const raw = localStorage.getItem('aravez_custom_products');
@@ -174,8 +221,10 @@ export const api = {
 
     // Merge custom products saved via Admin (always place custom uploaded products FIRST at the top)
     const customStored = getStoredCustomProducts();
-    const customStoredIds = new Set(customStored.map(p => p._id));
-    const nonCustomList = list.filter(p => !customStoredIds.has(p._id));
+    const customStoredMap = new Map(customStored.map(p => [p._id, p]));
+    // Merge any updated fields from customStored into backend list
+    const enrichedList = list.map(p => (customStoredMap.has(p._id) ? { ...p, ...customStoredMap.get(p._id) } : p));
+    const nonCustomList = enrichedList.filter(p => !customStoredMap.has(p._id));
     list = [...customStored, ...nonCustomList];
 
     if (params.category && params.category !== 'All' && params.category !== 'All Products') {
@@ -202,7 +251,9 @@ export const api = {
       const res = await fetch(`${API_BASE}/products/${id}`);
       if (!res.ok) throw new Error('Product not found');
       const data = await res.json();
-      return data.data;
+      const customStored = getStoredCustomProducts();
+      const customMatch = customStored.find(p => p._id === id);
+      return customMatch ? { ...data.data, ...customMatch } : data.data;
     } catch (err) {
       const customStored = getStoredCustomProducts();
       return customStored.find(p => p._id === id) || FALLBACK_PRODUCTS.find(p => p._id === id) || FALLBACK_PRODUCTS[0];
@@ -218,20 +269,22 @@ export const api = {
         body: JSON.stringify(productData),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to create product');
-      createdProd = data.data;
+      if (res.ok && data.data) {
+        createdProd = data.data;
+      }
     } catch (err) {
-      createdProd = { ...productData, _id: `aravez-prod-${Date.now()}` };
+      console.warn('Backend create product fallback:', err.message);
     }
 
-    if (createdProd) {
-      FALLBACK_PRODUCTS = [createdProd, ...FALLBACK_PRODUCTS.filter(p => p._id !== createdProd._id)];
-      saveStoredCustomProduct(createdProd);
-    }
-    return createdProd;
+    const mergedProd = { ...productData, ...(createdProd || {}), _id: createdProd?._id || `aravez-prod-${Date.now()}` };
+    FALLBACK_PRODUCTS = [mergedProd, ...FALLBACK_PRODUCTS.filter(p => p._id !== mergedProd._id)];
+    saveStoredCustomProduct(mergedProd);
+    window.dispatchEvent(new Event('aravez_catalog_updated'));
+    return mergedProd;
   },
 
   async updateProduct(id, productData) {
+    let updatedProd = null;
     try {
       const res = await fetch(`${API_BASE}/products/${id}`, {
         method: 'PUT',
@@ -239,16 +292,24 @@ export const api = {
         body: JSON.stringify(productData),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update product');
-      return data.data;
-    } catch (err) {
-      const idx = FALLBACK_PRODUCTS.findIndex(p => p._id === id);
-      if (idx !== -1) {
-        FALLBACK_PRODUCTS[idx] = { ...FALLBACK_PRODUCTS[idx], ...productData };
-        return FALLBACK_PRODUCTS[idx];
+      if (res.ok && data.data) {
+        updatedProd = data.data;
       }
-      return productData;
+    } catch (err) {
+      console.warn('Backend update product fallback:', err.message);
     }
+
+    const mergedProd = { ...productData, ...(updatedProd || {}), _id: id };
+    const idx = FALLBACK_PRODUCTS.findIndex(p => p._id === id);
+    if (idx !== -1) {
+      FALLBACK_PRODUCTS[idx] = { ...FALLBACK_PRODUCTS[idx], ...mergedProd };
+    } else {
+      FALLBACK_PRODUCTS.unshift(mergedProd);
+    }
+
+    saveStoredCustomProduct(mergedProd);
+    window.dispatchEvent(new Event('aravez_catalog_updated'));
+    return mergedProd;
   },
 
   async deleteProduct(id) {
@@ -422,44 +483,62 @@ export const api = {
     let list = [];
     try {
       const res = await fetch(`${API_BASE}/sliders`);
-      if (!res.ok) throw new Error('Failed to fetch sliders');
-      const data = await res.json();
-      list = data.data || [];
+      if (res.ok) {
+        const data = await res.json();
+        list = data.data || [];
+      }
     } catch (err) {
       list = [...FALLBACK_SLIDERS];
     }
 
-    // Merge custom uploaded sliders saved in localStorage
+    // Merge custom uploaded sliders saved in localStorage (always place custom uploaded sliders FIRST at the top)
     const customStored = getStoredCustomSliders();
     const customStoredIds = new Set(customStored.map(s => s._id));
     const nonCustomList = list.filter(s => !customStoredIds.has(s._id));
     list = [...customStored, ...nonCustomList];
 
-    // Filter out deleted sliders
+    // Filter out deleted sliders (by ID and by image URL)
     const deletedIds = new Set(getDeletedSliderIds());
-    list = list.filter(s => !deletedIds.has(s._id));
+    list = list.filter(s => !deletedIds.has(s._id) && !deletedIds.has(s.image));
 
     return list;
   },
 
   async createSlider(sliderData) {
     let createdSlide = null;
+    const payload = {
+      title: sliderData.title || 'Banner Slide',
+      subtitle: sliderData.subtitle || 'Aravez Commercial AV',
+      ...sliderData,
+    };
     try {
       const res = await fetch(`${API_BASE}/sliders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sliderData),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to create slider');
-      createdSlide = data.data;
+      if (res.ok && data.data) {
+        createdSlide = data.data;
+      }
     } catch (err) {
-      createdSlide = { ...sliderData, _id: `slider-${Date.now()}` };
+      console.warn('Backend create slider fallback:', err.message);
+    }
+
+    if (!createdSlide) {
+      createdSlide = { ...payload, _id: `slider-${Date.now()}` };
     }
 
     if (createdSlide) {
       FALLBACK_SLIDERS = [createdSlide, ...FALLBACK_SLIDERS.filter(s => s._id !== createdSlide._id)];
       saveStoredCustomSlider(createdSlide);
+
+      // Remove from deleted tracking if re-added
+      try {
+        const existingDeleted = getDeletedSliderIds().filter(id => id !== createdSlide._id && id !== createdSlide.image);
+        localStorage.setItem('aravez_deleted_sliders', JSON.stringify(existingDeleted));
+      } catch (e) {}
+
       window.dispatchEvent(new Event('aravez_catalog_updated'));
     }
     return createdSlide;
@@ -467,22 +546,28 @@ export const api = {
 
   async updateSlider(id, sliderData) {
     let updatedSlide = null;
+    const payload = {
+      title: sliderData.title || 'Banner Slide',
+      subtitle: sliderData.subtitle || 'Aravez Commercial AV',
+      ...sliderData,
+    };
     try {
       const res = await fetch(`${API_BASE}/sliders/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sliderData),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to update slider');
-      updatedSlide = data.data;
+      if (res.ok && data.data) {
+        updatedSlide = data.data;
+      }
     } catch (err) {
       const idx = FALLBACK_SLIDERS.findIndex(s => s._id === id);
       if (idx !== -1) {
-        FALLBACK_SLIDERS[idx] = { ...FALLBACK_SLIDERS[idx], ...sliderData };
+        FALLBACK_SLIDERS[idx] = { ...FALLBACK_SLIDERS[idx], ...payload };
         updatedSlide = FALLBACK_SLIDERS[idx];
       } else {
-        updatedSlide = { ...sliderData, _id: id };
+        updatedSlide = { ...payload, _id: id };
       }
     }
 
@@ -494,6 +579,11 @@ export const api = {
   },
 
   async deleteSlider(id) {
+    let targetImage = '';
+    const customStored = getStoredCustomSliders();
+    const targetSlide = customStored.find(s => s._id === id);
+    if (targetSlide) targetImage = targetSlide.image;
+
     try {
       const res = await fetch(`${API_BASE}/sliders/${id}`, {
         method: 'DELETE',
@@ -505,6 +595,8 @@ export const api = {
     FALLBACK_SLIDERS = FALLBACK_SLIDERS.filter(s => s._id !== id);
     removeStoredCustomSlider(id);
     trackDeletedSliderId(id);
+    if (targetImage) trackDeletedSliderId(targetImage);
+
     window.dispatchEvent(new Event('aravez_catalog_updated'));
     return { success: true, message: 'Slider deleted successfully' };
   },
@@ -555,6 +647,105 @@ export const api = {
     localStorage.setItem('aravez_placed_orders', JSON.stringify(updated));
     window.dispatchEvent(new Event('aravez_orders_updated'));
     return { success: true };
+  },
+
+  // Reviews & Testimonials Management
+  async getReviews() {
+    let list = [];
+    try {
+      const res = await fetch(`${API_BASE}/reviews`);
+      if (res.ok) {
+        const data = await res.json();
+        list = data.data || [];
+      }
+    } catch (err) {
+      list = [...FALLBACK_REVIEWS];
+    }
+
+    const customStored = getStoredCustomReviews();
+    const customStoredIds = new Set(customStored.map(r => r._id));
+    const nonCustomList = list.filter(r => !customStoredIds.has(r._id));
+    list = [...customStored, ...nonCustomList];
+
+    // Filter out deleted reviews
+    const deletedIds = new Set(getDeletedReviewIds());
+    list = list.filter(r => !deletedIds.has(r._id));
+
+    return list;
+  },
+
+  async createReview(reviewData) {
+    let createdRev = null;
+    try {
+      const res = await fetch(`${API_BASE}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reviewData),
+      });
+      const data = await res.json();
+      if (res.ok && data.data) {
+        createdRev = data.data;
+      }
+    } catch (err) {
+      console.warn('Backend create review fallback:', err.message);
+    }
+
+    const newRev = { ...reviewData, ...(createdRev || {}), _id: createdRev?._id || `rev-${Date.now()}` };
+    FALLBACK_REVIEWS = [newRev, ...FALLBACK_REVIEWS.filter(r => r._id !== newRev._id)];
+    saveStoredCustomReview(newRev);
+
+    try {
+      const existingDeleted = getDeletedReviewIds().filter(id => id !== newRev._id);
+      localStorage.setItem('aravez_deleted_reviews', JSON.stringify(existingDeleted));
+    } catch (e) {}
+
+    window.dispatchEvent(new Event('aravez_reviews_updated'));
+    return newRev;
+  },
+
+  async updateReview(id, reviewData) {
+    let updatedRev = null;
+    try {
+      const res = await fetch(`${API_BASE}/reviews/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reviewData),
+      });
+      const data = await res.json();
+      if (res.ok && data.data) {
+        updatedRev = data.data;
+      }
+    } catch (err) {
+      console.warn('Backend update review fallback:', err.message);
+    }
+
+    const mergedRev = { ...reviewData, ...(updatedRev || {}), _id: id };
+    const idx = FALLBACK_REVIEWS.findIndex(r => r._id === id);
+    if (idx !== -1) {
+      FALLBACK_REVIEWS[idx] = { ...FALLBACK_REVIEWS[idx], ...mergedRev };
+    } else {
+      FALLBACK_REVIEWS.unshift(mergedRev);
+    }
+
+    saveStoredCustomReview(mergedRev);
+    window.dispatchEvent(new Event('aravez_reviews_updated'));
+    return mergedRev;
+  },
+
+  async deleteReview(id) {
+    try {
+      const res = await fetch(`${API_BASE}/reviews/${id}`, {
+        method: 'DELETE',
+      });
+      await res.json();
+    } catch (err) {
+      console.warn('Backend delete review fallback:', err.message);
+    }
+    FALLBACK_REVIEWS = FALLBACK_REVIEWS.filter(r => r._id !== id);
+    removeStoredCustomReview(id);
+    trackDeletedReviewId(id);
+    window.dispatchEvent(new Event('aravez_reviews_updated'));
+    return { success: true, message: 'Review deleted successfully' };
   },
 };
 
