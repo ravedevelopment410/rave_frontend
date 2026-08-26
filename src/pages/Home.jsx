@@ -43,7 +43,7 @@ const Home = () => {
 
   const filteredProducts = landingBaseList.filter(p => {
     if (activeTab === 'bestsellers') return p.isBestSeller;
-    if (activeTab === 'skincare') return p.category === 'Botanical Skincare' || p.category === 'Touchbooks';
+    if (activeTab === 'skincare') return p.category === 'Botanical Skincare' || p.category === 'Toughbook';
     if (activeTab === 'teas') return p.category === 'Organic Teas' || p.category === 'Projecters';
     return true;
   }).slice(0, 6);

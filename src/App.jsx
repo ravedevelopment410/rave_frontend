@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartDrawer from './components/CartDrawer';
 import QuickViewModal from './components/QuickViewModal';
+import WhatsAppButton from './components/WhatsAppButton';
 import Home from './pages/Home';
 import About from './pages/About';
 import Products from './pages/Products';
@@ -52,6 +53,7 @@ const AppContent = () => {
       {/* Customer Overlays & Modals (Hidden on Admin) */}
       {!isAdmin && <CartDrawer />}
       {!isAdmin && <QuickViewModal />}
+      {!isAdmin && <WhatsAppButton />}
 
       {/* Customer Footer (Hidden on Admin) */}
       {!isAdmin && <Footer />}

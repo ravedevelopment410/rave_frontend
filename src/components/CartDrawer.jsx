@@ -96,27 +96,7 @@ const CartDrawer = () => {
             </button>
           </div>
 
-          {/* Free Shipping Progress Bar */}
-          <div className="bg-emerald-900 text-emerald-100 p-4 text-xs font-medium">
-            <div className="flex items-center justify-between mb-1.5">
-              <span>
-                {isFreeShipping ? (
-                  <span className="text-emerald-300 font-bold flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" /> You have unlocked FREE Express Delivery!
-                  </span>
-                ) : (
-                  <span>Add <strong className="text-white">${amountNeededForFreeShip.toFixed(2)}</strong> more for FREE shipping</span>
-                )}
-              </span>
-              <span className="font-bold">{Math.round(progressToFreeShip)}%</span>
-            </div>
-            <div className="w-full bg-emerald-950 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-emerald-400 to-teal-300 h-full rounded-full transition-all duration-500"
-                style={{ width: `${progressToFreeShip}%` }}
-              />
-            </div>
-          </div>
+
 
           {/* Cart Item List */}
           <div className="flex-1 overflow-y-auto p-6 divide-y divide-gray-100">
@@ -204,40 +184,7 @@ const CartDrawer = () => {
           {/* Footer & Checkout Area */}
           {cart.length > 0 && (
             <div className="p-6 border-t border-gray-100 bg-gray-50/50 space-y-4">
-              {/* Coupon Code Box */}
-              {appliedCoupon ? (
-                <div className="bg-emerald-100/70 border border-emerald-300 rounded-2xl p-3 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <Tag className="w-4 h-4 text-emerald-700" />
-                    <div>
-                      <span className="font-bold text-emerald-900">{appliedCoupon.code}</span> applied ({appliedCoupon.discountPercent}% OFF)
-                    </div>
-                  </div>
-                  <button
-                    onClick={removeCoupon}
-                    className="text-emerald-800 hover:text-rose-600 font-semibold underline text-xs ml-2"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Coupon code (e.g. ARAVEZ20)"
-                    value={couponInput}
-                    onChange={(e) => setCouponInput(e.target.value)}
-                    className="flex-1 bg-white border border-gray-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase"
-                  />
-                  <button
-                    type="submit"
-                    disabled={couponLoading}
-                    className="bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
-                  >
-                    {couponLoading ? 'Checking...' : 'Apply'}
-                  </button>
-                </form>
-              )}
+
 
               {/* Price Breakdown */}
               <div className="space-y-1.5 text-xs text-gray-600 pt-2">

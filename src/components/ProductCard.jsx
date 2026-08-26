@@ -66,16 +66,11 @@ const ProductCard = ({ product }) => {
 
       {/* Product Body */}
       <div className="p-5 flex flex-col flex-1">
-        {/* Category & Rating */}
+        {/* Category */}
         <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
           <span className="text-emerald-700 font-semibold tracking-wider uppercase text-[10px]">
             {product.category}
           </span>
-          <div className="flex items-center gap-1 text-amber-500">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span className="font-bold text-gray-700 text-xs">{product.rating}</span>
-            <span className="text-gray-400 text-[11px]">({product.reviewsCount})</span>
-          </div>
         </div>
 
         {/* Product Name */}

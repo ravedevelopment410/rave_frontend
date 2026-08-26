@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, RotateCcw, Heart, Layers } from 'lucide-react';
+import { Search, RotateCcw, Heart, Layers, ChevronDown, Check } from 'lucide-react';
 import { api } from '../services/api';
 import ProductCard from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
 
 export const PRODUCT_CATEGORIES = [
   'All Products',
-  'Touchbooks',
+  'Toughbook',
   'Projecters',
   'Interactive Panels',
   'Signages',
@@ -24,6 +24,7 @@ export const PRODUCT_CATEGORIES = [
   'VC Cameras',
   'VC Solutions',
   'Video Conferencing Equipments',
+  'Other',
 ];
 
 const Products = () => {
@@ -38,10 +39,9 @@ const Products = () => {
   const [maxPrice, setMaxPrice] = useState(500000);
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [onlyWishlist, setOnlyWishlist] = useState(searchParams.get('filter') === 'wishlist');
+  const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
 
   const { wishlist } = useCart();
-
-  const categories = PRODUCT_CATEGORIES;
 
   // Sync URL search params
   useEffect(() => {
@@ -90,10 +90,44 @@ const Products = () => {
     setSearchParams({});
   };
 
+  // Predefined standard categories (excluding All Products and Other)
+  const isStandardCategory = (catName) => {
+    if (!catName) return false;
+    return PRODUCT_CATEGORIES.some(
+      c => c !== 'All Products' && c !== 'Other' && c.toLowerCase() === catName.toLowerCase()
+    );
+  };
+
+  // Dynamically include any custom category names created by Admin
+  const customCategoriesInCatalog = Array.from(
+    new Set(
+      products
+        .map(p => p.category)
+        .filter(c => c && !PRODUCT_CATEGORIES.some(pc => pc.toLowerCase() === c.toLowerCase()))
+    )
+  );
+
+  const categories = [
+    ...PRODUCT_CATEGORIES.filter(c => c !== 'Other'),
+    ...customCategoriesInCatalog,
+    'Other'
+  ];
+
+  // Robust category matching function
+  const matchesCategory = (productCat, selectedCat) => {
+    if (!selectedCat || selectedCat === 'All' || selectedCat === 'All Products') return true;
+
+    if (selectedCat === 'Other') {
+      // Matches if product category is 'Other', empty, OR any custom category not in standard list
+      return !productCat || productCat.toLowerCase() === 'other' || !isStandardCategory(productCat);
+    }
+
+    return productCat && productCat.toLowerCase() === selectedCat.toLowerCase();
+  };
+
   // Client-side combined filtering (category & price & in-stock & wishlist)
   const displayedProducts = products.filter((p) => {
-    const isAll = selectedCategory === 'All' || selectedCategory === 'All Products';
-    if (!isAll && p.category && p.category.toLowerCase() !== selectedCategory.toLowerCase()) {
+    if (!matchesCategory(p.category, selectedCategory)) {
       return false;
     }
 
@@ -128,7 +162,7 @@ const Products = () => {
             const isSelected = selectedCategory === cat || (cat === 'All Products' && (selectedCategory === 'All' || selectedCategory === 'All Products'));
             const count = (cat === 'All Products' || cat === 'All')
               ? products.length
-              : products.filter(p => p.category && p.category.toLowerCase() === cat.toLowerCase()).length;
+              : products.filter(p => matchesCategory(p.category, cat)).length;
 
             return (
               <button
@@ -171,22 +205,53 @@ const Products = () => {
             <Search className="w-4 h-4 text-emerald-600 absolute left-3.5 top-3.5" />
           </div>
 
-          {/* Category Dropdown */}
-          <div className="md:col-span-3 flex items-center gap-2">
+          {/* Category Downward Dropdown */}
+          <div className="md:col-span-3 flex items-center gap-2 relative">
             <span className="text-xs text-gray-500 shrink-0 font-medium">Category:</span>
-            <select
-              value={selectedCategory === 'All' ? 'All Products' : selectedCategory}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSelectedCategory(val === 'All Products' ? 'All' : val);
-                setOnlyWishlist(false);
-              }}
-              className="w-full bg-emerald-50/40 border border-emerald-200 rounded-2xl py-2.5 px-3 text-xs sm:text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              {categories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+            <div className="relative flex-1">
+              <button
+                type="button"
+                onClick={() => setIsCatDropdownOpen(!isCatDropdownOpen)}
+                className="w-full bg-emerald-50/40 hover:bg-emerald-100/50 border border-emerald-200 rounded-2xl py-2.5 px-3.5 text-xs sm:text-sm text-slate-800 font-bold flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs cursor-pointer transition-colors"
+              >
+                <span className="truncate">{selectedCategory === 'All' ? 'All Products' : selectedCategory}</span>
+                <ChevronDown className={`w-4 h-4 text-emerald-700 transition-transform ${isCatDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Downward opening menu */}
+              {isCatDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsCatDropdownOpen(false)}
+                  />
+                  <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white border border-emerald-200 rounded-2xl shadow-xl max-h-64 overflow-y-auto py-1.5 animate-fade-in divide-y divide-slate-100">
+                    {categories.map((c) => {
+                      const isSelected = selectedCategory === c || (c === 'All Products' && (selectedCategory === 'All' || selectedCategory === 'All Products'));
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCategory(c === 'All Products' ? 'All' : c);
+                            setOnlyWishlist(false);
+                            setIsCatDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-800 text-white font-bold'
+                              : 'text-slate-700 hover:bg-emerald-50 hover:text-emerald-900'
+                          }`}
+                        >
+                          <span>{c}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-300" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Sort Dropdown */}

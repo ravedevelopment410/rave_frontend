@@ -25,7 +25,12 @@ import {
   Image as ImageIcon,
   UploadCloud,
   FolderOpen,
-  Camera
+  Camera,
+  ChevronDown,
+  Loader2,
+  Lock,
+  EyeOff,
+  LogOut
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -34,8 +39,43 @@ import { PRODUCT_CATEGORIES } from './Products';
 
 const Admin = () => {
   const { addToast } = useToast();
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem('aravez_admin_auth') === 'true';
+  });
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    setLoginError('');
+    const targetEmail = 'vdhiman@yahoo.com';
+    const targetPassword = 'vdhiman@739';
+
+    if (
+      loginEmail.trim().toLowerCase() === targetEmail.toLowerCase() &&
+      loginPassword === targetPassword
+    ) {
+      sessionStorage.setItem('aravez_admin_auth', 'true');
+      setIsAuthenticated(true);
+      addToast('Welcome back, Admin! Access Granted 🔐', 'success');
+    } else {
+      setLoginError('Invalid Email or Password! Access Denied.');
+      addToast('Invalid credentials!', 'error');
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('aravez_admin_auth');
+    setIsAuthenticated(false);
+    setLoginEmail('');
+    setLoginPassword('');
+    addToast('Admin logged out successfully', 'info');
+  };
 
   // Data states
   const [products, setProducts] = useState([]);
@@ -51,9 +91,12 @@ const Admin = () => {
   // Modals
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isAddOfferOpen, setIsAddOfferOpen] = useState(false);
   const [isAddSliderOpen, setIsAddSliderOpen] = useState(false);
   const [editingSlider, setEditingSlider] = useState(null);
+  const [isUploadingSliderImage, setIsUploadingSliderImage] = useState(false);
 
   const sliderFileInputRef = useRef(null);
   const quickSliderInputRef = useRef(null);
@@ -62,12 +105,16 @@ const Admin = () => {
   // Product Form State
   const initialProductForm = {
     name: '',
-    tagline: '',
-    category: 'Touchbooks',
+    category: 'Toughbook',
+    customCategory: '',
     price: '',
     discountPrice: '',
+    discountPercent: '',
     image: '',
+    images: [],
     description: '',
+    features: '',
+    specifications: '',
     volume: '1 Unit',
     inStock: true,
     isFeatured: false,
@@ -92,15 +139,15 @@ const Admin = () => {
 
   // Slider Form State
   const initialSliderForm = {
-    badge: '🌿 100% Certified Botanical Wellness',
+    badge: '',
     title: '',
-    subtitle: 'Handcrafted botanical remedies and organic wellness for mind and body.',
-    btnText: 'Shop Best Sellers',
-    btnLink: '/products',
-    secondaryBtnText: 'Explore Offers',
-    secondaryBtnLink: '/offers',
+    subtitle: '',
+    btnText: '',
+    btnLink: '',
+    secondaryBtnText: '',
+    secondaryBtnLink: '',
     image: '',
-    floatingText: 'Special Botanical Drop',
+    floatingText: '',
     isActive: true,
   };
   const [sliderForm, setSliderForm] = useState(initialSliderForm);
@@ -142,30 +189,24 @@ const Admin = () => {
   const handleSliderFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsUploadingSliderImage(true);
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
         const base64 = reader.result;
-        addToast('Uploading image to Cloudinary...', 'info');
         try {
           const uploadRes = await api.uploadImage(base64, 'aravez_sliders');
           const finalUrl = uploadRes.url || base64;
           setSliderForm(prev => ({
             ...prev,
             image: finalUrl,
-            title: prev.title || cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
           }));
-          if (uploadRes.isCloudinary) {
-            addToast('Image uploaded to Cloudinary CDN! 🌩️', 'success');
-          } else {
-            addToast(`Image "${file.name}" loaded!`, 'success');
-          }
         } catch (err) {
           setSliderForm(prev => ({
             ...prev,
             image: base64,
-            title: prev.title || cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
           }));
+        } finally {
+          setIsUploadingSliderImage(false);
         }
       };
       reader.readAsDataURL(file);
@@ -252,7 +293,7 @@ const Admin = () => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    addToast(`Uploading ${files.length} photo(s) to Cloudinary...`, 'info');
+    setIsUploadingPhotos(true);
     let loadedUrls = [];
     let completed = 0;
 
@@ -268,6 +309,7 @@ const Admin = () => {
         }
         completed++;
         if (completed === files.length) {
+          setIsUploadingPhotos(false);
           setProductForm(prev => {
             const currentList = prev.images && prev.images.length > 0 ? prev.images : (prev.image ? [prev.image] : []);
             const updatedImages = [...currentList, ...loadedUrls];
@@ -277,7 +319,6 @@ const Admin = () => {
               image: prev.image || updatedImages[0],
             };
           });
-          addToast(`${files.length} product photo(s) uploaded! 🌩️`, 'success');
         }
       };
       reader.readAsDataURL(file);
@@ -315,15 +356,34 @@ const Admin = () => {
       return;
     }
 
+    const finalCategory = productForm.category === 'Other'
+      ? (productForm.customCategory?.trim() || 'Other')
+      : productForm.category;
+
+    // Process features into array (split by newline or comma)
+    let featuresArray = [];
+    if (typeof productForm.features === 'string' && productForm.features.trim()) {
+      featuresArray = productForm.features
+        .split(/[\n,]/)
+        .map(f => f.trim())
+        .filter(Boolean);
+    } else if (Array.isArray(productForm.features)) {
+      featuresArray = productForm.features;
+    }
+
     const payload = {
       ...productForm,
+      category: finalCategory,
       price: Number(productForm.price),
       discountPrice: productForm.discountPrice ? Number(productForm.discountPrice) : null,
       image: mainImage,
       images: allImages,
+      features: featuresArray,
+      specifications: productForm.specifications || '',
       rating: editingProduct ? editingProduct.rating : 4.9,
       reviewsCount: editingProduct ? editingProduct.reviewsCount : 1,
     };
+    delete payload.customCategory;
 
     try {
       if (editingProduct) {
@@ -351,16 +411,30 @@ const Admin = () => {
     const pct = (p > 0 && dp) ? Math.round(((p - dp) / p) * 100) : '';
     const imgs = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : []);
 
+    const isStdCategory = PRODUCT_CATEGORIES.includes(product.category) && product.category !== 'All Products';
+    const cat = isStdCategory ? product.category : 'Other';
+    const customCat = isStdCategory ? '' : (product.category || '');
+
+    const feats = Array.isArray(product.features)
+      ? product.features.join('\n')
+      : (product.features || '');
+
+    const specs = typeof product.specifications === 'object'
+      ? Object.entries(product.specifications).map(([k, v]) => `${k}: ${v}`).join('\n')
+      : (product.specifications || '');
+
     setProductForm({
       name: product.name,
-      tagline: product.tagline || '',
-      category: product.category,
+      category: cat,
+      customCategory: customCat,
       price: product.price,
       discountPercent: pct,
       discountPrice: dp,
       image: product.image || imgs[0] || '',
       images: imgs,
-      description: product.description,
+      description: product.description || '',
+      features: feats,
+      specifications: specs,
       volume: product.volume || '1 Unit',
       inStock: product.inStock,
       isFeatured: product.isFeatured || false,
@@ -440,8 +514,8 @@ const Admin = () => {
 
     const payload = {
       ...sliderForm,
-      title: sliderForm.title || 'Pure Botanical Care for Radiant Skin & Soul.',
-      subtitle: sliderForm.subtitle || 'Discover Aravez artisanal skincare and botanical wellness.',
+      title: sliderForm.title || '',
+      subtitle: sliderForm.subtitle || '',
     };
 
     try {
@@ -465,15 +539,15 @@ const Admin = () => {
   const handleEditSlider = (slide) => {
     setEditingSlider(slide);
     setSliderForm({
-      badge: slide.badge || '🌿 100% Certified Botanical Wellness',
-      title: slide.title,
-      subtitle: slide.subtitle,
-      btnText: slide.btnText || 'Shop Collection',
-      btnLink: slide.btnLink || '/products',
-      secondaryBtnText: slide.secondaryBtnText || '',
-      secondaryBtnLink: slide.secondaryBtnLink || '',
+      badge: slide.badge || '',
+      title: slide.title || '',
+      subtitle: slide.subtitle || '',
+      btnText: slide.btnText || '',
+      btnLink: slide.btnLink || '',
+      secondaryBtnText: '',
+      secondaryBtnLink: '',
       image: slide.image,
-      floatingText: slide.floatingText || '',
+      floatingText: '',
       isActive: slide.isActive !== false,
     });
     setIsAddSliderOpen(true);
@@ -543,6 +617,94 @@ const Admin = () => {
     return matchesSearch && matchesCat;
   });
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-emerald-950 to-slate-900 flex items-center justify-center p-4 selection:bg-emerald-500 selection:text-white">
+        <div className="max-w-md w-full bg-slate-900/90 border border-emerald-500/20 backdrop-blur-xl rounded-3xl p-6 sm:p-10 shadow-2xl shadow-emerald-950/60 space-y-8 animate-fade-in">
+          
+          {/* Header Badge & Title */}
+          <div className="text-center space-y-3">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-800 to-teal-500 mx-auto flex items-center justify-center shadow-lg shadow-emerald-900/30 border border-emerald-400/20">
+              <Lock className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Aravez Admin Portal
+              </h1>
+              <p className="text-xs text-emerald-300/80 mt-1 font-medium">
+                Enter authorized admin credentials to access store dashboard
+              </p>
+            </div>
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={handleLoginSubmit} className="space-y-5 text-left">
+            {loginError && (
+              <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold text-center animate-shake">
+                ⚠️ {loginError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-bold text-emerald-200 mb-1.5 uppercase tracking-wider">
+                Admin Email Address *
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  placeholder=""
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl py-3 pl-10 pr-4 text-xs sm:text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-mono"
+                />
+                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-emerald-200 mb-1.5 uppercase tracking-wider">
+                Admin Password *
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder=""
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl py-3 pl-10 pr-10 text-xs sm:text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-mono"
+                />
+                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-3.5 text-slate-500 hover:text-white transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold py-3.5 px-6 rounded-2xl text-xs sm:text-sm shadow-xl shadow-emerald-950/50 transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <ShieldCheck className="w-5 h-5 text-emerald-200" />
+              <span>Unlock Admin Workspace</span>
+            </button>
+          </form>
+
+          <div className="text-center pt-2 border-t border-slate-800/80">
+            <Link to="/" className="text-xs text-slate-400 hover:text-emerald-400 transition-colors font-medium">
+              ← Return to Main Storefront
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 pb-20">
       
@@ -566,11 +728,11 @@ const Admin = () => {
               </div>
             </div>
 
-            {/* View Live Store Button */}
+            {/* View Live Store & Logout Buttons */}
             <div className="flex items-center gap-3">
               <button
                 onClick={loadAdminData}
-                className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white transition-colors"
+                className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white transition-colors cursor-pointer"
                 title="Refresh Data"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -583,6 +745,14 @@ const Admin = () => {
                 <span>View Live Store</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </Link>
+              <button
+                onClick={handleLogout}
+                className="bg-rose-900/60 hover:bg-rose-800 text-rose-200 hover:text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm cursor-pointer border border-rose-700/50"
+                title="Lock & Logout Admin"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
 
           </div>
@@ -769,36 +939,6 @@ const Admin = () => {
         {activeTab === 'sliders' && (
           <div className="space-y-6 animate-fade-in">
             
-            {/* Quick Upload from Local Drive Banner */}
-            <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 rounded-3xl p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg border border-emerald-700/60">
-              <div className="space-y-2 text-center md:text-left">
-                <span className="inline-block px-3 py-1 bg-emerald-700 text-emerald-200 rounded-full text-xs font-bold uppercase tracking-wider">
-                  📁 Local Drive Direct Upload
-                </span>
-                <h3 className="font-serif text-2xl font-bold">Select Slide Image from Your PC / Laptop</h3>
-                <p className="text-emerald-100/80 text-xs max-w-xl">
-                  Apne computer se koi bhi image select karein. Ye turant Home page ke hero slider mein upload ho jayegi!
-                </p>
-              </div>
-
-              {/* Hidden file input for quick upload */}
-              <input
-                type="file"
-                ref={quickSliderInputRef}
-                accept="image/*"
-                onChange={handleQuickSliderUpload}
-                className="hidden"
-              />
-
-              <button
-                onClick={() => quickSliderInputRef.current?.click()}
-                className="bg-white hover:bg-emerald-50 text-emerald-950 font-bold px-7 py-3.5 rounded-2xl text-xs sm:text-sm flex items-center gap-2.5 shadow-xl transition-all hover:scale-105 shrink-0"
-              >
-                <FolderOpen className="w-5 h-5 text-emerald-700" />
-                <span>Choose Local Image File</span>
-              </button>
-            </div>
-
             {/* Header & Regular Add Button */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
               <div>
@@ -823,62 +963,46 @@ const Admin = () => {
               {sliders.map((slide, idx) => (
                 <div
                   key={slide._id || idx}
-                  className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                  className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
                 >
                   <div className="relative aspect-video bg-slate-100">
                     <img
                       src={slide.image}
-                      alt={slide.title}
+                      alt={`Slide ${idx + 1}`}
                       className="w-full h-full object-cover"
                     />
-                    <span className="absolute top-3 left-3 bg-emerald-950/80 text-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md">
+                    <span className="absolute top-3 left-3 bg-emerald-950/80 text-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md shadow-xs">
                       Slide #{idx + 1}
                     </span>
                     <button
                       onClick={() => handleToggleSliderActive(slide)}
-                      className={`absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm ${
+                      className={`absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm cursor-pointer transition-colors ${
                         slide.isActive !== false
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-600 text-white'
+                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          : 'bg-slate-600 text-white hover:bg-slate-700'
                       }`}
                     >
-                      {slide.isActive !== false ? '● Active' : 'Hidden'}
+                      {slide.isActive !== false ? '● Active' : '✕ Hidden'}
                     </button>
                   </div>
 
-                  <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                    <div>
-                      <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block mb-1">
-                        {slide.badge}
-                      </span>
-                      <h4 className="font-serif text-lg font-bold text-slate-900 leading-snug line-clamp-2">
-                        {slide.title}
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">
-                        {slide.subtitle}
-                      </p>
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                      <div className="text-[11px] text-slate-400">
-                        Btn: <strong className="text-slate-700">{slide.btnText}</strong>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEditSlider(slide)}
-                          className="p-2 rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-800 transition-colors"
-                          title="Edit Slide"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSlider(slide._id, slide.title)}
-                          className="p-2 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
-                          title="Delete Slide"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                  <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">Banner Slide #{idx + 1}</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditSlider(slide)}
+                        className="p-2 rounded-xl bg-white hover:bg-emerald-100 text-slate-600 hover:text-emerald-800 border border-slate-200 transition-colors cursor-pointer"
+                        title="Edit Slide"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSlider(slide._id, `Slide #${idx + 1}`)}
+                        className="p-2 rounded-xl bg-white hover:bg-rose-100 text-slate-600 hover:text-rose-700 border border-slate-200 transition-colors cursor-pointer"
+                        title="Delete Slide"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -939,7 +1063,6 @@ const Admin = () => {
                       <th className="py-4 px-6">Product</th>
                       <th className="py-4 px-4">Category</th>
                       <th className="py-4 px-4">Price</th>
-                      <th className="py-4 px-4">Stock Status</th>
                       <th className="py-4 px-4">Badges</th>
                       <th className="py-4 px-6 text-right">Actions</th>
                     </tr>
@@ -947,7 +1070,7 @@ const Admin = () => {
                   <tbody className="divide-y divide-slate-100">
                     {filteredProducts.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="text-center py-12 text-slate-400">
+                        <td colSpan="5" className="text-center py-12 text-slate-400">
                           No products found matching filters.
                         </td>
                       </tr>
@@ -977,18 +1100,6 @@ const Admin = () => {
                             {p.discountPrice && (
                               <div className="text-[10px] text-slate-400 line-through">₹{Number(p.price).toLocaleString('en-IN')}</div>
                             )}
-                          </td>
-                          <td className="py-4 px-4">
-                            <button
-                              onClick={() => handleToggleStock(p)}
-                              className={`px-3 py-1 rounded-full font-bold text-[10px] transition-colors ${
-                                p.inStock
-                                  ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                  : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
-                              }`}
-                            >
-                              {p.inStock ? '● In Stock' : '✕ Out of Stock'}
-                            </button>
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex gap-1 flex-wrap">
@@ -1209,29 +1320,60 @@ const Admin = () => {
 
       </div>
 
-      {/* ----------------- ADD / EDIT HERO SLIDER MODAL (With Local File Upload) ----------------- */}
+      {/* ----------------- FULL SCREEN HERO SLIDER CREATION & EDITING STUDIO ----------------- */}
       {isAddSliderOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-emerald-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-fade-in">
-            <button
-              onClick={() => setIsAddSliderOpen(false)}
-              className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="font-serif text-2xl font-bold text-slate-900 mb-6">
-              {editingSlider ? 'Edit Hero Slide' : 'Upload New Hero Slide to Home Page'}
-            </h3>
-
-            <form onSubmit={handleSaveSlider} className="space-y-5 text-xs">
-              
-              {/* Local File Selector Dropzone */}
+        <div className="fixed inset-0 z-50 bg-slate-100/95 backdrop-blur-md overflow-y-auto animate-fade-in flex flex-col min-h-screen">
+          {/* Top Sticky Navigation Bar */}
+          <div className="sticky top-0 z-30 bg-emerald-950 text-white px-6 py-4 shadow-xl border-b border-emerald-900 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAddSliderOpen(false)}
+                className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+                <span>Close Studio</span>
+              </button>
+              <div className="h-6 w-[1px] bg-emerald-800" />
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  1. Select Image from Local Drive *
-                </label>
-                
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                  <Sliders className="w-5 h-5 text-emerald-400" />
+                  <span>{editingSlider ? 'Edit Hero Banner Slide' : 'Hero Banner Creation Studio'}</span>
+                </h2>
+                <span className="text-[11px] text-emerald-300">Upload banner image & set headline text for landing page carousel</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAddSliderOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-emerald-200 hover:text-white hover:bg-emerald-900 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleSaveSlider(e)}
+                className="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold px-6 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-900/40 transition-all transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>{editingSlider ? 'Save & Update Slide' : 'Publish Banner Slide'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Studio Workspace Content */}
+          <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8 space-y-6">
+            <form onSubmit={handleSaveSlider} className="space-y-6 text-xs">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="font-serif font-bold text-lg text-slate-900">Upload Hero Banner Image</h3>
+                    <p className="text-xs text-slate-500">Select image from PC (Recommended size: 100% width x 60vh height)</p>
+                  </div>
+                </div>
+
                 <input
                   type="file"
                   ref={sliderFileInputRef}
@@ -1241,299 +1383,205 @@ const Admin = () => {
                 />
 
                 {sliderForm.image ? (
-                  <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 bg-slate-100 aspect-video flex items-center justify-center group">
+                  <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 bg-slate-100 aspect-video flex items-center justify-center group shadow-md">
                     <img
                       src={sliderForm.image}
                       alt="Selected preview"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-emerald-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                    <div className="absolute inset-0 bg-emerald-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                       <button
                         type="button"
                         onClick={() => sliderFileInputRef.current?.click()}
-                        className="bg-white text-emerald-950 font-bold px-4 py-2 rounded-xl text-xs shadow-md"
+                        className="bg-white text-emerald-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-md hover:bg-emerald-50 transition-colors cursor-pointer"
                       >
                         Change Photo
                       </button>
                       <button
                         type="button"
                         onClick={() => setSliderForm(prev => ({ ...prev, image: '' }))}
-                        className="bg-rose-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md"
+                        className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-md transition-colors cursor-pointer"
                       >
-                        Remove
+                        Remove Photo
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div
-                    onClick={() => sliderFileInputRef.current?.click()}
-                    className="border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50 rounded-2xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
+                    onClick={() => !isUploadingSliderImage && sliderFileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all flex flex-col items-center justify-center gap-3 group ${
+                      isUploadingSliderImage
+                        ? 'border-emerald-500 bg-emerald-100/50 cursor-wait'
+                        : 'border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50 cursor-pointer'
+                    }`}
                   >
-                    <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <UploadCloud className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-emerald-900 text-sm block">Click to Browse Local Computer Image</span>
-                      <span className="text-[11px] text-slate-500">Supports JPG, PNG, WEBP files</span>
-                    </div>
+                    {isUploadingSliderImage ? (
+                      <>
+                        <div className="w-16 h-16 rounded-2xl bg-emerald-200 text-emerald-900 flex items-center justify-center shadow-xs">
+                          <Loader2 className="w-8 h-8 animate-spin text-emerald-800" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-emerald-950 text-base block">Uploading Banner Image to Cloudinary...</span>
+                          <span className="text-xs text-emerald-700 font-medium">Processing high-res image, please wait...</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                          <UploadCloud className="w-8 h-8" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-emerald-950 text-base block">Click to Browse Local Computer Image</span>
+                          <span className="text-xs text-slate-500">Supports JPG, PNG, WEBP files</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
-              </div>
 
-              {/* Or manual URL fallback */}
-              <div>
-                <label className="block text-[11px] text-slate-500 mb-1">
-                  Or paste direct image URL (Optional):
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={sliderForm.image.startsWith('data:') ? '' : sliderForm.image}
-                  onChange={(e) => setSliderForm({ ...sliderForm, image: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Slide Titles */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Badge Tag</label>
+                {/* Or Manual URL Add */}
+                <div className="pt-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Or paste direct image URL:
+                  </label>
                   <input
-                    type="text"
-                    placeholder="🌿 100% Certified Botanical Wellness"
-                    value={sliderForm.badge}
-                    onChange={(e) => setSliderForm({ ...sliderForm, badge: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    type="url"
+                    placeholder="https://images.unsplash.com/..."
+                    value={sliderForm.image.startsWith('data:') ? '' : sliderForm.image}
+                    onChange={(e) => setSliderForm({ ...sliderForm, image: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Floating Tagline (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="Code: ARAVEZ20 (20% OFF)"
-                    value={sliderForm.floatingText}
-                    onChange={(e) => setSliderForm({ ...sliderForm, floatingText: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+
+                <div className="pt-4 flex items-center justify-end gap-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddSliderOpen(false)}
+                    className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold px-8 py-3 rounded-xl text-xs shadow-lg shadow-emerald-900/30 transition-transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
+                  >
+                    <UploadCloud className="w-4 h-4" />
+                    <span>{editingSlider ? 'Update Slide' : 'Publish Banner Slide to Home Page'}</span>
+                  </button>
                 </div>
-              </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Hero Main Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Pure Botanical Care for Radiant Skin & Soul."
-                  value={sliderForm.title}
-                  onChange={(e) => setSliderForm({ ...sliderForm, title: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Hero Subtitle / Description *</label>
-                <textarea
-                  rows={2}
-                  required
-                  placeholder="Discover Aravez — artisanal skincare, herbal adaptogens, and organic loose-leaf teas..."
-                  value={sliderForm.subtitle}
-                  onChange={(e) => setSliderForm({ ...sliderForm, subtitle: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                />
-              </div>
-
-              {/* Buttons Settings */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Primary Button Text</label>
-                  <input
-                    type="text"
-                    placeholder="Shop Best Sellers"
-                    value={sliderForm.btnText}
-                    onChange={(e) => setSliderForm({ ...sliderForm, btnText: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Primary Button Link</label>
-                  <input
-                    type="text"
-                    placeholder="/products"
-                    value={sliderForm.btnLink}
-                    onChange={(e) => setSliderForm({ ...sliderForm, btnLink: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddSliderOpen(false)}
-                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-7 py-2.5 rounded-xl shadow-md transition-colors flex items-center gap-2"
-                >
-                  <UploadCloud className="w-4 h-4" />
-                  <span>{editingSlider ? 'Update Slide' : 'Upload & Publish Slide'}</span>
-                </button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* ----------------- ADD / EDIT PRODUCT MODAL (With Local File Upload) ----------------- */}
+      {/* ----------------- FULL SCREEN PRODUCT CREATION & EDITING STUDIO ----------------- */}
       {isAddProductOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-emerald-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-fade-in">
-            <button
-              onClick={() => setIsAddProductOpen(false)}
-              className="absolute top-5 right-5 p-2 rounded-full hover:bg-slate-100 text-slate-500"
-            >
-              <X className="w-5 h-5" />
-            </button>
+        <div className="fixed inset-0 z-50 bg-slate-100/95 backdrop-blur-md overflow-y-auto animate-fade-in flex flex-col min-h-screen">
+          {/* Top Sticky Navigation Bar */}
+          <div className="sticky top-0 z-30 bg-emerald-950 text-white px-6 py-4 shadow-xl border-b border-emerald-900 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAddProductOpen(false)}
+                className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold"
+              >
+                <X className="w-5 h-5" />
+                <span>Close Studio</span>
+              </button>
+              <div className="h-6 w-[1px] bg-emerald-800" />
+              <div>
+                <h2 className="font-serif text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                  <Package className="w-5 h-5 text-emerald-400" />
+                  <span>{editingProduct ? `Editing: "${editingProduct.name}"` : 'Add New Product Studio'}</span>
+                </h2>
+                <span className="text-[11px] text-emerald-300">Fill details & upload images to publish product to live store</span>
+              </div>
+            </div>
 
-            <h3 className="font-serif text-2xl font-bold text-slate-900 mb-6">
-              {editingProduct ? 'Edit Product' : 'Add New Product to Aravez'}
-            </h3>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAddProductOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-emerald-200 hover:text-white hover:bg-emerald-900 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleSaveProduct(e)}
+                className="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold px-6 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-900/40 transition-all transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                <span>{editingProduct ? 'Save & Update Product' : 'Publish Product to Website'}</span>
+              </button>
+            </div>
+          </div>
 
-            <form onSubmit={handleSaveProduct} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Product Title *</label>
+          {/* Studio Workspace Content */}
+          <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 space-y-6">
+            <form id="product-form" onSubmit={handleSaveProduct} className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-xs">
+
+              {/* Left Column (Span 5): Product Media & Multi-Photo Upload */}
+              <div className="lg:col-span-5 space-y-6">
+                
+                {/* Media Card */}
+                <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div>
+                      <h3 className="font-serif font-bold text-base text-slate-900">Product Media & Gallery</h3>
+                      <p className="text-[11px] text-slate-500">Upload 8+ high-res images for multi-angle view</p>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full">
+                      {productForm.images?.length || (productForm.image ? 1 : 0)} Photos
+                    </span>
+                  </div>
+
                   <input
-                    type="text"
-                    required
-                    placeholder="e.g. Aravez Pure Rosehip Oil"
-                    value={productForm.name ?? ''}
-                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    type="file"
+                    ref={productFileInputRef}
+                    accept="image/*"
+                    multiple
+                    onChange={handleProductFilesChange}
+                    className="hidden"
                   />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Category *</label>
-                  <select
-                    value={productForm.category}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+
+                  {/* Multi-Photo Big Dropzone Button */}
+                  <div
+                    onClick={() => !isUploadingPhotos && productFileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all flex flex-col items-center justify-center gap-3 group ${
+                      isUploadingPhotos
+                        ? 'border-emerald-500 bg-emerald-100/50 cursor-wait'
+                        : 'border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50 cursor-pointer'
+                    }`}
                   >
-                    {PRODUCT_CATEGORIES.filter(c => c !== 'All Products').map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                    {isUploadingPhotos ? (
+                      <>
+                        <div className="w-14 h-14 rounded-2xl bg-emerald-200 text-emerald-900 flex items-center justify-center shadow-xs">
+                          <Loader2 className="w-8 h-8 animate-spin text-emerald-800" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-emerald-950 text-sm block">Uploading Photos to Cloudinary...</span>
+                          <span className="text-[11px] text-emerald-700 font-medium">Processing high-res images, please wait...</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                          <FolderOpen className="w-7 h-7" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-emerald-950 text-sm block">Click to Browse & Upload Photos from PC</span>
+                          <span className="text-[11px] text-slate-500">Select multiple images at once (Supports JPG, PNG, WEBP)</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-              {/* Price & Discount Row (In Indian Rupees ₹) */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Original Price (₹) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="e.g. 100"
-                    value={productForm.price ?? ''}
-                    onChange={(e) => handlePriceChange(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Discount (% OFF)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder="e.g. 20"
-                    value={productForm.discountPercent ?? ''}
-                    onChange={(e) => handleDiscountPercentChange(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Discount Price (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="e.g. 80"
-                    value={productForm.discountPrice ?? ''}
-                    onChange={(e) => handleDiscountPriceChange(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Unit / Pack Size</label>
-                  <input
-                    type="text"
-                    placeholder="1 Unit / Box"
-                    value={productForm.volume ?? ''}
-                    onChange={(e) => setProductForm({ ...productForm, volume: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Price Calculation Live Summary Box */}
-              {productForm.price > 0 && (
-                <div className="bg-emerald-900 text-white rounded-xl p-3 text-xs flex flex-wrap items-center justify-between gap-2 shadow-inner">
+                  {/* Or Manual URL Add */}
                   <div className="flex items-center gap-2">
-                    <span className="bg-emerald-700 px-2 py-0.5 rounded font-bold">Price Summary</span>
-                    <span>Original: <strong>₹{Number(productForm.price).toLocaleString('en-IN')}</strong></span>
-                    {productForm.discountPercent > 0 && (
-                      <span className="text-amber-300 font-bold">({productForm.discountPercent}% OFF)</span>
-                    )}
-                  </div>
-                  <div className="text-sm font-extrabold text-emerald-300">
-                    Final Price: ₹{Number(productForm.discountPrice || productForm.price).toLocaleString('en-IN')}
-                    {productForm.discountPrice && (
-                      <span className="text-xs text-emerald-200 font-normal ml-2">
-                        (You Save: ₹{(Number(productForm.price) - Number(productForm.discountPrice)).toLocaleString('en-IN')})
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Multi-Image File Upload (8+ photos at once) */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block font-bold text-slate-700">
-                    Product Photos * <span className="text-xs font-normal text-emerald-700">(Select 8+ images for multi-angle product gallery)</span>
-                  </label>
-                  <span className="text-xs text-slate-500 font-semibold">
-                    Total: {productForm.images?.length || (productForm.image ? 1 : 0)} photos
-                  </span>
-                </div>
-
-                <input
-                  type="file"
-                  ref={productFileInputRef}
-                  accept="image/*"
-                  multiple
-                  onChange={handleProductFilesChange}
-                  className="hidden"
-                />
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => productFileInputRef.current?.click()}
-                    className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold px-5 py-3 rounded-2xl flex items-center gap-2 shadow-md transition-transform hover:scale-102 cursor-pointer"
-                  >
-                    <FolderOpen className="w-4 h-4 text-emerald-300" />
-                    <span>Select 8+ Photos from PC (Multi-Select)</span>
-                  </button>
-
-                  <div className="flex-1 flex items-center gap-2">
-                    <span className="text-xs text-slate-400">or add URL:</span>
+                    <span className="text-slate-400 text-[11px] font-semibold whitespace-nowrap">Or Add Image URL:</span>
                     <input
                       type="url"
                       placeholder="https://images.unsplash.com/..."
@@ -1552,135 +1600,309 @@ const Admin = () => {
                       className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
-                </div>
 
-                {/* Uploaded Gallery Thumbnails Grid */}
-                {(productForm.images && productForm.images.length > 0) ? (
-                  <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                    <span className="text-[11px] font-bold text-slate-600 block uppercase tracking-wider">
-                      Uploaded Photos Gallery (Click "Set Main" to choose cover photo):
-                    </span>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                      {productForm.images.map((img, idx) => {
-                        const isMain = productForm.image === img || (!productForm.image && idx === 0);
-                        return (
-                          <div
-                            key={idx}
-                            className={`relative aspect-square rounded-xl overflow-hidden border-2 shadow-xs group ${
-                              isMain ? 'border-emerald-600 ring-2 ring-emerald-500/50' : 'border-slate-200'
-                            }`}
-                          >
-                            <img src={img} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
-                            {isMain && (
-                              <span className="absolute top-1 left-1 bg-emerald-700 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">
-                                ★ Main
-                              </span>
-                            )}
-                            <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
-                              {!isMain && (
+                  {/* Uploaded Gallery Grid */}
+                  {(productForm.images && productForm.images.length > 0) ? (
+                    <div className="pt-2 space-y-2">
+                      <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                        Uploaded Photos (Click "Set Cover" to choose main photo):
+                      </span>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                        {productForm.images.map((img, idx) => {
+                          const isMain = productForm.image === img || (!productForm.image && idx === 0);
+                          return (
+                            <div
+                              key={idx}
+                              className={`relative aspect-square rounded-2xl overflow-hidden border-2 shadow-xs group ${
+                                isMain ? 'border-emerald-600 ring-2 ring-emerald-500/50' : 'border-slate-200 bg-slate-50'
+                              }`}
+                            >
+                              <img src={img} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                              {isMain && (
+                                <span className="absolute top-1 left-1 bg-emerald-800 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">
+                                  ★ Main Cover
+                                </span>
+                              )}
+                              <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+                                {!isMain && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetMainProductImage(img)}
+                                    className="bg-white text-emerald-950 text-[10px] font-bold px-2 py-1 rounded-md shadow"
+                                  >
+                                    Set Cover
+                                  </button>
+                                )}
                                 <button
                                   type="button"
-                                  onClick={() => handleSetMainProductImage(img)}
-                                  className="bg-white text-emerald-950 text-[10px] font-bold px-2 py-0.5 rounded shadow"
+                                  onClick={() => handleRemoveProductImage(idx)}
+                                  className="bg-rose-600 text-white p-1 rounded-full hover:bg-rose-700"
+                                  title="Remove photo"
                                 >
-                                  Set Main
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveProductImage(idx)}
-                                className="bg-rose-600 text-white p-1 rounded-full hover:bg-rose-700"
-                                title="Remove photo"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : productForm.image && (
+                    <div className="mt-2 flex items-center gap-3 p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
+                      <img src={productForm.image} alt="Preview" className="w-14 h-14 rounded-xl object-cover border" />
+                      <div>
+                        <span className="font-bold text-emerald-950 text-xs block">Main Cover Loaded</span>
+                        <span className="text-[11px] text-slate-500">Ready for catalog</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Display & Stock Settings Box */}
+                <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+                  <h3 className="font-serif font-bold text-base text-slate-900">Visibility & Display Badges</h3>
+                  <div className="space-y-3">
+
+                    <label className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100/70 transition-colors">
+                      <div>
+                        <span className="font-bold text-slate-800 block text-xs">⭐ Best Seller Badge</span>
+                        <span className="text-[11px] text-slate-500">Show under Best Seller filter</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={productForm.isBestSeller}
+                        onChange={(e) => setProductForm({ ...productForm, isBestSeller: e.target.checked })}
+                        className="accent-emerald-600 w-5 h-5 rounded"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 cursor-pointer hover:bg-emerald-100/70 transition-colors">
+                      <div>
+                        <span className="font-bold text-emerald-950 block text-xs">🌟 Mark as Featured</span>
+                        <span className="text-[11px] text-emerald-700">Display on Home Landing Page</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={productForm.isFeatured}
+                        onChange={(e) => setProductForm({ ...productForm, isFeatured: e.target.checked })}
+                        className="accent-emerald-600 w-5 h-5 rounded"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Column (Span 7): Product Information Form */}
+              <div className="lg:col-span-7 space-y-6">
+                
+                {/* Basic Information Card */}
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
+                  <h3 className="font-serif font-bold text-lg text-slate-900 pb-2 border-b border-slate-100">
+                    Product Core Details
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
+                      <label className="block font-bold text-slate-800 mb-1.5">Product Title / Model Name *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Aravez 75-inch 4K Interactive Flat Panel Display"
+                        value={productForm.name ?? ''}
+                        onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2 relative">
+                      <label className="block font-bold text-slate-800 mb-1.5">Category *</label>
+                      <button
+                        type="button"
+                        onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                        className="w-full bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-left flex items-center justify-between text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs cursor-pointer transition-colors"
+                      >
+                        <span>{productForm.category || 'Select Category'}</span>
+                        <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-emerald-700' : ''}`} />
+                      </button>
+
+                      {/* Custom Downward Opening Options Dropdown */}
+                      {isCategoryDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto divide-y divide-slate-100 animate-fade-in">
+                          {PRODUCT_CATEGORIES.filter(c => c !== 'All Products').map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => {
+                                setProductForm({ ...productForm, category: c });
+                                setIsCategoryDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-4 py-3 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                                productForm.category === c
+                                  ? 'bg-emerald-50 text-emerald-950 font-bold'
+                                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                              }`}
+                            >
+                              <span>{c}</span>
+                              {productForm.category === c && <Check className="w-4 h-4 text-emerald-700 shrink-0" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {productForm.category === 'Other' && (
+                        <div className="mt-3 p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
+                          <label className="block font-bold text-emerald-900 mb-1 text-xs">Specify Custom Category Name *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. Smart Teleprompters / Mounting Rigs"
+                            value={productForm.customCategory ?? ''}
+                            onChange={(e) => setProductForm({ ...productForm, customCategory: e.target.value })}
+                            className="w-full bg-white border border-emerald-300 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
-                ) : productForm.image && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-emerald-700 font-semibold">
-                    <img src={productForm.image} alt="Preview" className="w-10 h-10 rounded-lg object-cover border" />
-                    <span>Photo loaded</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Short Tagline</label>
-                <input
-                  type="text"
-                  placeholder="Deep cellular hydration with organic botanicals"
-                  value={productForm.tagline ?? ''}
-                  onChange={(e) => setProductForm({ ...productForm, tagline: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Description *</label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Detailed botanical ingredients and benefits..."
-                  value={productForm.description ?? ''}
-                  onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                />
-              </div>
-
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
-                <span className="font-bold text-slate-700 block mb-1">Display & Visibility Settings:</span>
-                <div className="flex flex-wrap items-center gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={productForm.inStock}
-                      onChange={(e) => setProductForm({ ...productForm, inStock: e.target.checked })}
-                      className="accent-emerald-600 w-4.5 h-4.5 rounded"
-                    />
-                    <span>In Stock</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700" title="Show under Best Sellers filter">
-                    <input
-                      type="checkbox"
-                      checked={productForm.isBestSeller}
-                      onChange={(e) => setProductForm({ ...productForm, isBestSeller: e.target.checked })}
-                      className="accent-emerald-600 w-4.5 h-4.5 rounded"
-                    />
-                    <span>⭐ Mark as Best Seller</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer font-semibold text-emerald-800 bg-emerald-100/60 px-3 py-1.5 rounded-xl border border-emerald-300/80 shadow-xs" title="Show on Home Landing Page (Handcrafted With Passion section)">
-                    <input
-                      type="checkbox"
-                      checked={productForm.isFeatured}
-                      onChange={(e) => setProductForm({ ...productForm, isFeatured: e.target.checked })}
-                      className="accent-emerald-600 w-4.5 h-4.5 rounded"
-                    />
-                    <span>🌟 Mark as Featured (Show on Landing Page)</span>
-                  </label>
                 </div>
+
+                {/* Pricing & Discount Card */}
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-4">
+                  <h3 className="font-serif font-bold text-lg text-slate-900 pb-2 border-b border-slate-100">
+                    Pricing & Commercial Quotation (₹ INR)
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-emerald-50/50 p-4 sm:p-5 rounded-2xl border border-emerald-100">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Original Price (₹) *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        placeholder="e.g. 150000"
+                        value={productForm.price ?? ''}
+                        onChange={(e) => handlePriceChange(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Discount (% OFF)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="e.g. 15"
+                        value={productForm.discountPercent ?? ''}
+                        onChange={(e) => handleDiscountPercentChange(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Discount Price (₹)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="e.g. 127500"
+                        value={productForm.discountPrice ?? ''}
+                        onChange={(e) => handleDiscountPriceChange(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  {productForm.price > 0 && (
+                    <div className="bg-emerald-950 text-white rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-md">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="bg-emerald-800 text-emerald-200 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
+                          Summary
+                        </span>
+                        <span>MRP: <strong>₹{Number(productForm.price).toLocaleString('en-IN')}</strong></span>
+                        {productForm.discountPercent > 0 && (
+                          <span className="text-amber-300 font-extrabold">({productForm.discountPercent}% OFF)</span>
+                        )}
+                      </div>
+                      <div className="text-sm font-black text-emerald-300">
+                        Selling Price: ₹{Number(productForm.discountPrice || productForm.price).toLocaleString('en-IN')}
+                        {productForm.discountPrice && (
+                          <span className="text-xs text-emerald-200 font-normal ml-2">
+                            (Savings: ₹{(Number(productForm.price) - Number(productForm.discountPrice)).toLocaleString('en-IN')})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Features & Specifications Card */}
+                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
+                  <h3 className="font-serif font-bold text-lg text-slate-900 pb-2 border-b border-slate-100">
+                    Features & Technical Specifications
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">
+                        Key Features <span className="text-[11px] font-normal text-slate-500">(1 per line or comma-separated)</span>
+                      </label>
+                      <textarea
+                        rows={4}
+                        placeholder="e.g.&#10;• 20-Point Multi-Touch Glass&#10;• Built-in 4K Camera & 8-Array Mic&#10;• Dual OS Android 11 & Windows 11&#10;• Anti-glare Toughened Glass"
+                        value={productForm.features ?? ''}
+                        onChange={(e) => setProductForm({ ...productForm, features: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y text-xs font-medium leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1.5">
+                        Technical Specifications <span className="text-[11px] font-normal text-slate-500">(Resolution, Power, Warranty etc.)</span>
+                      </label>
+                      <textarea
+                        rows={4}
+                        placeholder="e.g.&#10;Screen Size: 75 inch 4K UHD&#10;Brightness: 450 cd/m²&#10;Touch Points: 20-Point IR Touch&#10;Warranty: 3 Years Onsite Warranty"
+                        value={productForm.specifications ?? ''}
+                        onChange={(e) => setProductForm({ ...productForm, specifications: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y text-xs font-mono leading-relaxed"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1.5">Full Product Description *</label>
+                    <textarea
+                      rows={4}
+                      required
+                      placeholder="Detailed commercial description, installation guidelines, compatibility and warranty info..."
+                      value={productForm.description ?? ''}
+                      onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y text-xs leading-relaxed"
+                    />
+                  </div>
+                </div>
+
+                {/* Bottom Submit Action */}
+                <div className="pt-4 flex items-center justify-end gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddProductOpen(false)}
+                    className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold px-8 py-3 rounded-xl text-xs shadow-lg shadow-emerald-900/30 transition-transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{editingProduct ? 'Save & Update Product' : 'Publish Product to Catalog'}</span>
+                  </button>
+                </div>
+
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddProductOpen(false)}
-                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-6 py-2.5 rounded-xl shadow-md transition-colors"
-                >
-                  {editingProduct ? 'Update Product' : 'Create Product'}
-                </button>
-              </div>
             </form>
           </div>
         </div>
