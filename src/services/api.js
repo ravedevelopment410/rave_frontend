@@ -1,50 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://rave-backend-0vqv.onrender.com/api';
 
 // Rich Hero Banner Sliders for Aravez Home Page
-let FALLBACK_SLIDERS = [
-  {
-    _id: 'slider-1',
-    badge: '🌿 100% Certified Botanical Wellness',
-    title: 'Pure Botanical Care for Radiant Skin & Soul.',
-    subtitle: 'Discover Aravez — artisanal skincare, herbal adaptogens, and organic loose-leaf teas consciously crafted from wildcrafted earth botanicals.',
-    btnText: 'Shop Best Sellers',
-    btnLink: '/products',
-    secondaryBtnText: 'Explore Offers (Up to 30% OFF)',
-    secondaryBtnLink: '/offers',
-    image: 'https://images.unsplash.com/photo-1608248597359-009a25b6a716?auto=format&fit=crop&w=1200&q=80',
-    floatingText: 'Code: ARAVEZ20 (20% OFF)',
-    isActive: true,
-    order: 1,
-  },
-  {
-    _id: 'slider-2',
-    badge: '✨ Ancient Ayurvedic Intelligence',
-    title: 'Restorative Herbal Elixirs & Adaptogen Tonics.',
-    subtitle: 'Calm daily stress, awaken cellular longevity, and fortify immune resilience with sacred Himalayan botanicals and Shilajit drops.',
-    btnText: 'Explore Herbal Wellness',
-    btnLink: '/products?category=Herbal+Wellness',
-    secondaryBtnText: 'Read Our Story',
-    secondaryBtnLink: '/about',
-    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80',
-    floatingText: '100% Wildcrafted Himalayan Herbs',
-    isActive: true,
-    order: 2,
-  },
-  {
-    _id: 'slider-3',
-    badge: '🍵 Mountain Cloud-Forest Harvest',
-    title: 'Artisan Loose-Leaf Organic Teas & Infusions.',
-    subtitle: 'Slow down with high-elevation organic green teas, soothing French lavender blossoms, and fragrant night-blooming jasmine.',
-    btnText: 'Discover Tea Collection',
-    btnLink: '/products?category=Organic+Teas',
-    secondaryBtnText: 'View Tea Deals',
-    secondaryBtnLink: '/offers',
-    image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=1200&q=80',
-    floatingText: 'Zero Artificial Aromas • Biodegradable',
-    isActive: true,
-    order: 3,
-  },
-];
+let FALLBACK_SLIDERS = [];
 
 let FALLBACK_PRODUCTS = [];
 
@@ -153,6 +110,51 @@ const saveStoredCustomProduct = (newProduct) => {
   } catch (e) {
     console.error('Failed to save custom product to localStorage:', e);
   }
+};
+
+const getStoredCustomSliders = () => {
+  try {
+    const raw = localStorage.getItem('aravez_custom_sliders');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveStoredCustomSlider = (newSlider) => {
+  try {
+    const existing = getStoredCustomSliders();
+    const updated = [newSlider, ...existing.filter(s => s._id !== newSlider._id)];
+    localStorage.setItem('aravez_custom_sliders', JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to save custom slider to localStorage:', e);
+  }
+};
+
+const removeStoredCustomSlider = (id) => {
+  try {
+    const existing = getStoredCustomSliders();
+    const updated = existing.filter(s => s._id !== id);
+    localStorage.setItem('aravez_custom_sliders', JSON.stringify(updated));
+  } catch (e) {}
+};
+
+const getDeletedSliderIds = () => {
+  try {
+    const raw = localStorage.getItem('aravez_deleted_sliders');
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+};
+
+const trackDeletedSliderId = (id) => {
+  try {
+    const existing = getDeletedSliderIds();
+    if (!existing.includes(id)) {
+      localStorage.setItem('aravez_deleted_sliders', JSON.stringify([...existing, id]));
+    }
+  } catch (e) {}
 };
 
 export const api = {
@@ -417,17 +419,31 @@ export const api = {
 
   // Hero Sliders
   async getSliders() {
+    let list = [];
     try {
       const res = await fetch(`${API_BASE}/sliders`);
       if (!res.ok) throw new Error('Failed to fetch sliders');
       const data = await res.json();
-      return data.data;
+      list = data.data || [];
     } catch (err) {
-      return FALLBACK_SLIDERS;
+      list = [...FALLBACK_SLIDERS];
     }
+
+    // Merge custom uploaded sliders saved in localStorage
+    const customStored = getStoredCustomSliders();
+    const customStoredIds = new Set(customStored.map(s => s._id));
+    const nonCustomList = list.filter(s => !customStoredIds.has(s._id));
+    list = [...customStored, ...nonCustomList];
+
+    // Filter out deleted sliders
+    const deletedIds = new Set(getDeletedSliderIds());
+    list = list.filter(s => !deletedIds.has(s._id));
+
+    return list;
   },
 
   async createSlider(sliderData) {
+    let createdSlide = null;
     try {
       const res = await fetch(`${API_BASE}/sliders`, {
         method: 'POST',
@@ -436,15 +452,21 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to create slider');
-      return data.data;
+      createdSlide = data.data;
     } catch (err) {
-      const newSlide = { ...sliderData, _id: `slider-${Date.now()}` };
-      FALLBACK_SLIDERS.push(newSlide);
-      return newSlide;
+      createdSlide = { ...sliderData, _id: `slider-${Date.now()}` };
     }
+
+    if (createdSlide) {
+      FALLBACK_SLIDERS = [createdSlide, ...FALLBACK_SLIDERS.filter(s => s._id !== createdSlide._id)];
+      saveStoredCustomSlider(createdSlide);
+      window.dispatchEvent(new Event('aravez_catalog_updated'));
+    }
+    return createdSlide;
   },
 
   async updateSlider(id, sliderData) {
+    let updatedSlide = null;
     try {
       const res = await fetch(`${API_BASE}/sliders/${id}`, {
         method: 'PUT',
@@ -453,15 +475,22 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to update slider');
-      return data.data;
+      updatedSlide = data.data;
     } catch (err) {
       const idx = FALLBACK_SLIDERS.findIndex(s => s._id === id);
       if (idx !== -1) {
         FALLBACK_SLIDERS[idx] = { ...FALLBACK_SLIDERS[idx], ...sliderData };
-        return FALLBACK_SLIDERS[idx];
+        updatedSlide = FALLBACK_SLIDERS[idx];
+      } else {
+        updatedSlide = { ...sliderData, _id: id };
       }
-      return sliderData;
     }
+
+    if (updatedSlide) {
+      saveStoredCustomSlider(updatedSlide);
+      window.dispatchEvent(new Event('aravez_catalog_updated'));
+    }
+    return updatedSlide;
   },
 
   async deleteSlider(id) {
@@ -469,13 +498,15 @@ export const api = {
       const res = await fetch(`${API_BASE}/sliders/${id}`, {
         method: 'DELETE',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to delete slider');
-      return data;
+      await res.json();
     } catch (err) {
-      FALLBACK_SLIDERS = FALLBACK_SLIDERS.filter(s => s._id !== id);
-      return { success: true };
+      console.warn('Backend delete slider fallback:', err.message);
     }
+    FALLBACK_SLIDERS = FALLBACK_SLIDERS.filter(s => s._id !== id);
+    removeStoredCustomSlider(id);
+    trackDeletedSliderId(id);
+    window.dispatchEvent(new Event('aravez_catalog_updated'));
+    return { success: true, message: 'Slider deleted successfully' };
   },
 
   // Cloudinary Upload (Cloud Name: mybhmjbd)
