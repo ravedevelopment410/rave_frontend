@@ -8,7 +8,7 @@ import { useCart } from '../context/CartContext';
 export const PRODUCT_CATEGORIES = [
   'All Products',
   'Toughbook',
-  'Projecters',
+  'Projectors',
   'Interactive Panels',
   'Signages',
   'Active LED',
