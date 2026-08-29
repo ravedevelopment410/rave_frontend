@@ -99,10 +99,14 @@ const Products = () => {
     const fetchCatalog = async () => {
       setLoading(true);
       try {
-        const data = await api.getProducts({
-          search: searchQuery || undefined,
-          sort: sortBy,
-        });
+        const queryParams = {};
+        if (searchQuery && searchQuery.trim()) {
+          queryParams.search = searchQuery.trim();
+        }
+        if (sortBy) {
+          queryParams.sort = sortBy;
+        }
+        const data = await api.getProducts(queryParams);
         setProducts(data);
       } catch (err) {
         console.error('Catalog fetch error:', err);

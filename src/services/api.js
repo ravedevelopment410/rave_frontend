@@ -219,8 +219,18 @@ export const api = {
   async getProducts(params = {}) {
     let list = [];
     try {
-      const query = new URLSearchParams(params).toString();
-      const res = await fetch(`${API_BASE}/products?${query}`);
+      const cleanParams = {};
+      if (params && typeof params === 'object') {
+        Object.keys(params).forEach(k => {
+          const val = params[k];
+          if (val !== undefined && val !== null && val !== '' && val !== 'undefined' && val !== 'null') {
+            cleanParams[k] = val;
+          }
+        });
+      }
+      const query = new URLSearchParams(cleanParams).toString();
+      const url = query ? `${API_BASE}/products?${query}` : `${API_BASE}/products`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error('API request failed');
       const data = await res.json();
       list = data.data || [];
