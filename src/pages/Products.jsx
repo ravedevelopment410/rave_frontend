@@ -27,6 +27,46 @@ export const PRODUCT_CATEGORIES = [
   'Other',
 ];
 
+export const normalizeCategory = (cat) => {
+  if (!cat) return '';
+  const c = cat.toString().trim().toLowerCase();
+  // Projectors matching (handles Projectors, Projecters, Projector)
+  if (c === 'projectors' || c === 'projecters' || c === 'projector') return 'projectors';
+  // Toughbook matching (handles Toughbook, Toughbooks, Touchbook, Touchbooks)
+  if (c === 'toughbook' || c === 'toughbooks' || c === 'touchbook' || c === 'touchbooks') return 'toughbook';
+  // Interactive Panels matching (handles Interactive Panel, Interactive Panels, IFPD, Smart Panels)
+  if (c === 'interactive panel' || c === 'interactive panels' || c === 'interactive flat panel') return 'interactive panels';
+  // Signages matching
+  if (c === 'signage' || c === 'signages' || c === 'digital signage') return 'signages';
+  // Active LED matching
+  if (c === 'active led' || c === 'active leds' || c === 'led wall') return 'active led';
+  // Home Theater matching
+  if (c === 'home theater' || c === 'home theatre') return 'home theater';
+  // Audio Video Receiver matching
+  if (c === 'audio video receiver' || c === 'av receiver' || c === 'avr') return 'audio video receiver';
+  // Speakers matching
+  if (c === 'speaker' || c === 'speakers') return 'speakers';
+  // HDMI Cables matching
+  if (c === 'hdmi cable' || c === 'hdmi cables') return 'hdmi cables';
+  // TV matching
+  if (c === 'tv' || c === 'smart tv' || c === 'commercial tv' || c === 'tvs') return 'tv';
+  // Projector Lamps matching
+  if (c === 'projector lamp' || c === 'projector lamps') return 'projector lamps';
+  // Professional Lamps matching
+  if (c === 'professional lamp' || c === 'professional lamps') return 'professional lamps';
+  // Professional Audio matching
+  if (c === 'professional audio' || c === 'pro audio') return 'professional audio';
+  // Teleprompters matching
+  if (c === 'teleprompter' || c === 'teleprompters') return 'teleprompters';
+  // VC Cameras matching
+  if (c === 'vc camera' || c === 'vc cameras') return 'vc cameras';
+  // VC Solutions matching
+  if (c === 'vc solution' || c === 'vc solutions') return 'vc solutions';
+  // Video Conferencing Equipments matching
+  if (c === 'video conferencing equipments' || c === 'video conferencing equipment' || c === 'video conferencing') return 'video conferencing equipments';
+  return c;
+};
+
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
@@ -93,8 +133,9 @@ const Products = () => {
   // Predefined standard categories (excluding All Products and Other)
   const isStandardCategory = (catName) => {
     if (!catName) return false;
+    const norm = normalizeCategory(catName);
     return PRODUCT_CATEGORIES.some(
-      c => c !== 'All Products' && c !== 'Other' && c.toLowerCase() === catName.toLowerCase()
+      c => c !== 'All Products' && c !== 'Other' && normalizeCategory(c) === norm
     );
   };
 
@@ -103,7 +144,7 @@ const Products = () => {
     new Set(
       products
         .map(p => p.category)
-        .filter(c => c && !PRODUCT_CATEGORIES.some(pc => pc.toLowerCase() === c.toLowerCase()))
+        .filter(c => c && !PRODUCT_CATEGORIES.some(pc => normalizeCategory(pc) === normalizeCategory(c)))
     )
   );
 
@@ -117,12 +158,14 @@ const Products = () => {
   const matchesCategory = (productCat, selectedCat) => {
     if (!selectedCat || selectedCat === 'All' || selectedCat === 'All Products') return true;
 
-    if (selectedCat === 'Other') {
-      // Matches if product category is 'Other', empty, OR any custom category not in standard list
-      return !productCat || productCat.toLowerCase() === 'other' || !isStandardCategory(productCat);
+    const normProduct = normalizeCategory(productCat);
+    const normSelected = normalizeCategory(selectedCat);
+
+    if (selectedCat === 'Other' || normSelected === 'other') {
+      return !productCat || normProduct === 'other' || !isStandardCategory(productCat);
     }
 
-    return productCat && productCat.toLowerCase() === selectedCat.toLowerCase();
+    return normProduct === normSelected || (productCat && productCat.toLowerCase() === selectedCat.toLowerCase());
   };
 
   // Client-side combined filtering (category & price & in-stock & wishlist)

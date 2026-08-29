@@ -143,7 +143,17 @@ const trackDeletedReviewId = (id) => {
 const getStoredCustomProducts = () => {
   try {
     const raw = localStorage.getItem('aravez_custom_products');
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    return list.map(p => {
+      let cat = p.category;
+      if (cat && (cat.toLowerCase() === 'projecters' || cat.toLowerCase() === 'projector')) {
+        cat = 'Projectors';
+      } else if (cat && (cat.toLowerCase() === 'touchbooks' || cat.toLowerCase() === 'touchbook')) {
+        cat = 'Toughbook';
+      }
+      return { ...p, category: cat };
+    });
   } catch (e) {
     return [];
   }
@@ -228,7 +238,18 @@ export const api = {
     list = [...customStored, ...nonCustomList];
 
     if (params.category && params.category !== 'All' && params.category !== 'All Products') {
-      list = list.filter(p => p.category && p.category.toLowerCase() === params.category.toLowerCase());
+      const qCat = params.category.toLowerCase();
+      list = list.filter(p => {
+        if (!p.category) return false;
+        const pCat = p.category.toLowerCase();
+        if (qCat === 'projectors' || qCat === 'projecters' || qCat === 'projector') {
+          return pCat === 'projectors' || pCat === 'projecters' || pCat === 'projector';
+        }
+        if (qCat === 'toughbook' || qCat === 'touchbook' || qCat === 'touchbooks' || qCat === 'toughbooks') {
+          return pCat === 'toughbook' || pCat === 'touchbook' || pCat === 'touchbooks' || pCat === 'toughbooks';
+        }
+        return pCat === qCat;
+      });
     }
     if (params.search) {
       const q = params.search.toLowerCase();
