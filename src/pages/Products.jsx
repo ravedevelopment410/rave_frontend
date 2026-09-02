@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, RotateCcw, Heart, Layers, ChevronDown, Check } from 'lucide-react';
+import { Search, RotateCcw, Heart, Layers, ChevronDown, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { api } from '../services/api';
 import ProductCard from '../components/ProductCard';
 import { useCart } from '../context/CartContext';
@@ -81,7 +81,17 @@ const Products = () => {
   const [onlyWishlist, setOnlyWishlist] = useState(searchParams.get('filter') === 'wishlist');
   const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
 
+  // Pagination State (9 cards per page)
+  const ITEMS_PER_PAGE = 9;
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsGridRef = useRef(null);
+
   const { wishlist } = useCart();
+
+  // Reset to first page when any filter, search or category changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery, sortBy, maxPrice, onlyInStock, onlyWishlist]);
 
   // Sync URL search params
   useEffect(() => {
@@ -131,6 +141,7 @@ const Products = () => {
     setMaxPrice(500000);
     setOnlyInStock(false);
     setOnlyWishlist(false);
+    setCurrentPage(1);
     setSearchParams({});
   };
 
@@ -184,6 +195,37 @@ const Products = () => {
     if (onlyWishlist && !wishlist.some((w) => w._id === p._id)) return false;
     return true;
   });
+
+  // Pagination Logic (9 items per page)
+  const totalPages = Math.ceil(displayedProducts.length / ITEMS_PER_PAGE) || 1;
+  const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (validCurrentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedProducts = displayedProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      if (productsGridRef.current) {
+        productsGridRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (validCurrentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (validCurrentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', validCurrentPage - 1, validCurrentPage, validCurrentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-6">
@@ -362,44 +404,131 @@ const Products = () => {
         </div>
       </div>
 
-      {/* Products Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
-            <div key={n} className="h-96 rounded-3xl bg-gray-100 animate-pulse" />
-          ))}
-        </div>
-      ) : displayedProducts.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center border border-emerald-100 shadow-sm max-w-lg mx-auto space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-            <Search className="w-8 h-8" />
-          </div>
-          <h3 className="font-serif text-xl font-bold text-gray-900">No remedies found</h3>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            We couldn't find any products matching your current search or filter combination.
-          </p>
-          <button
-            onClick={handleResetFilters}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-6 py-2.5 rounded-full transition-colors"
-          >
-            Clear All Filters
-          </button>
-        </div>
-      ) : (
-        <div>
-          <div className="flex items-center justify-between text-xs text-gray-500 mb-6">
-            <span>Showing <strong className="text-emerald-950 font-bold">{displayedProducts.length}</strong> botanical items</span>
-            {onlyWishlist && (
-              <span className="text-rose-600 font-semibold">Viewing Saved Wishlist items</span>
-            )}
-          </div>
+      {/* Products Grid & Pagination Section */}
+      <div ref={productsGridRef} className="scroll-mt-24">
+        {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {displayedProducts.map((product) => (
-              <ProductCard key={product._id} product={product} />
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+              <div key={n} className="h-96 rounded-3xl bg-gray-100 animate-pulse" />
             ))}
           </div>
-        </div>
-      )}
+        ) : displayedProducts.length === 0 ? (
+          <div className="bg-white rounded-3xl p-12 text-center border border-emerald-100 shadow-sm max-w-lg mx-auto space-y-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+              <Search className="w-8 h-8" />
+            </div>
+            <h3 className="font-serif text-xl font-bold text-gray-900">No products found</h3>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              We couldn't find any products matching your current search or filter combination.
+            </p>
+            <button
+              onClick={handleResetFilters}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-6 py-2.5 rounded-full transition-colors cursor-pointer"
+            >
+              Clear All Filters
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500 gap-2">
+              <span>
+                Showing <strong className="text-emerald-950 font-bold">{startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, displayedProducts.length)}</strong> of <strong className="text-emerald-950 font-bold">{displayedProducts.length}</strong> products
+              </span>
+              {onlyWishlist && (
+                <span className="text-rose-600 font-semibold">Viewing Saved Wishlist items</span>
+              )}
+            </div>
+
+            {/* Exactly 9 Products Per Page (3x3 Grid) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {paginatedProducts.map((product) => (
+                <ProductCard key={product._id} product={product} />
+              ))}
+            </div>
+
+            {/* Numbered Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="bg-white rounded-3xl p-4 sm:p-6 border border-emerald-100/90 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
+                <span className="text-xs text-slate-500 font-medium order-2 sm:order-1">
+                  Page <strong className="text-emerald-900 font-bold">{validCurrentPage}</strong> of <strong className="text-emerald-900 font-bold">{totalPages}</strong>
+                </span>
+
+                <div className="flex items-center gap-1.5 order-1 sm:order-2 flex-wrap justify-center">
+                  {/* First Page button */}
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(1)}
+                    disabled={validCurrentPage === 1}
+                    className="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                    title="First Page"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+
+                  {/* Previous Button */}
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(validCurrentPage - 1)}
+                    disabled={validCurrentPage === 1}
+                    className="px-3 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span className="hidden sm:inline">Prev</span>
+                  </button>
+
+                  {/* Page Numbers */}
+                  {getPageNumbers().map((num, idx) => {
+                    if (num === '...') {
+                      return (
+                        <span key={`ellipsis-${idx}`} className="px-2 py-1 text-slate-400 font-bold text-xs">
+                          ...
+                        </span>
+                      );
+                    }
+                    const isActive = num === validCurrentPage;
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handlePageChange(num)}
+                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                          isActive
+                            ? 'bg-emerald-800 text-white shadow-md shadow-emerald-950/20 scale-105 ring-2 ring-emerald-500/30'
+                            : 'border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 bg-white'
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    );
+                  })}
+
+                  {/* Next Button */}
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(validCurrentPage + 1)}
+                    disabled={validCurrentPage === totalPages}
+                    className="px-3 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+
+                  {/* Last Page button */}
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={validCurrentPage === totalPages}
+                    className="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                    title="Last Page"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
     </div>
   );

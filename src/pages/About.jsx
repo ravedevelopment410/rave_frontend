@@ -15,7 +15,7 @@ const About = () => {
     {
       icon: ShieldCheck,
       title: 'Genuine Brand Authorization',
-      description: 'We source 100% authentic Touchbooks, Projectors, Interactive Panels, and VC equipment directly from authorized brand channels with official warranty.',
+      description: 'We source 100% authentic Toughbook, Projectors, Interactive Panels, and VC equipment directly from authorized brand channels with official warranty.',
     },
     {
       icon: Award,
@@ -48,7 +48,7 @@ const About = () => {
             Empowering Workspaces <span className="italic font-serif text-emerald-300">&</span> Institutions With Advanced AV Tech.
           </h1>
           <p className="text-emerald-100/85 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-            Welcome to Aravez (Rave Services). We specialize in commercial AV integration, Touchbooks, Interactive Flat Panels, 4K Projectors, Active LEDs, and Video Conferencing equipment.
+            Welcome to Aravez (Rave Services). We specialize in commercial AV integration, Toughbook, Interactive Flat Panels, 4K Projectors, Active LEDs, and Video Conferencing equipment.
           </p>
         </div>
       </section>
@@ -103,7 +103,7 @@ const About = () => {
               Aravez (Rave Services) was established to empower modern corporate offices, educational institutions, auditoriums, and luxury home theaters with premier commercial audio-visual technology.
             </p>
             <p className="text-gray-600 text-sm sm:text-base leading-relaxed">
-              We supply high-grade Touchbooks, Interactive Flat Panels, 4K Laser Projectors, Active LED displays, Professional Audio Systems, Teleprompters, and Video Conferencing equipment customized for modern collaborative environments.
+              We supply high-grade Toughbook, Interactive Flat Panels, 4K Laser Projectors, Active LED displays, Professional Audio Systems, Teleprompters, and Video Conferencing equipment customized for modern collaborative environments.
             </p>
 
             <div className="space-y-3 pt-2">

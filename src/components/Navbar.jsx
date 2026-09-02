@@ -46,7 +46,7 @@ const Navbar = () => {
               </div>
               <div className="flex flex-col">
                 <span className="font-serif text-2xl sm:text-3xl font-bold tracking-tight text-emerald-950 group-hover:text-emerald-700 transition-colors">
-                  Aravez
+                  AraveZ
                 </span>
               </div>
             </Link>

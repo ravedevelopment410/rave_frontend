@@ -11,7 +11,7 @@ const TrustBadges = () => {
     {
       icon: Award,
       title: 'Authorized AV Distributor',
-      description: 'Leading provider of Touchbooks, Interactive Panels & Active LEDs.',
+      description: 'Leading provider of Toughbook, Interactive Panels & Active LEDs.',
     },
     {
       icon: Truck,
