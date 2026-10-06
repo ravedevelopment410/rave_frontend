@@ -32,7 +32,7 @@ const AppContent = () => {
   const isAdmin = location.pathname.startsWith('/admin');
 
   return (
-    <div className={`min-h-screen flex flex-col ${isAdmin ? 'bg-slate-50' : 'bg-[#fafbf9]'} text-gray-800 font-sans selection:bg-emerald-500 selection:text-white`}>
+    <div className={`min-h-screen flex flex-col ${isAdmin ? 'bg-[#f7f7f8]' : 'bg-[#fafbf9]'} text-gray-800 font-sans selection:bg-[#ea0028] selection:text-white`}>
       {/* Customer Navbar (Hidden on Admin) */}
       {!isAdmin && <Navbar />}
 

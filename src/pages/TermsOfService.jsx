@@ -41,7 +41,7 @@ const TermsOfService = () => {
       {/* Hero Header */}
       <section className="relative overflow-hidden bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white py-16 sm:py-24">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
-          <span className="inline-block px-3.5 py-1.5 bg-emerald-800/80 border border-emerald-600/50 rounded-full text-xs font-semibold uppercase tracking-widest text-emerald-300">
+          <span className="inline-block px-3.5 py-1.5 bg-emerald-800/80 border border-emerald-600/50 rounded-none text-xs font-semibold uppercase tracking-widest text-emerald-300">
             RAVE SERVICES • COMMERCIAL TERMS
           </span>
           <h1 className="font-serif text-3xl sm:text-5xl font-bold">
@@ -57,13 +57,13 @@ const TermsOfService = () => {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10 space-y-8">
         
         {/* Main Terms Grid */}
-        <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xl border border-slate-200/80 space-y-8">
+        <div className="bg-white rounded-none p-6 sm:p-10 shadow-xl border border-slate-200/80 space-y-8">
           {terms.map((item, idx) => {
             const Icon = item.icon;
             return (
               <div key={idx} className="space-y-2 pb-6 border-b border-slate-100 last:border-0 last:pb-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <div className="w-8 h-8 rounded-none bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
                     <Icon className="w-4 h-4" />
                   </div>
                   <h2 className="font-serif text-lg sm:text-xl font-bold text-slate-900">{item.title}</h2>
@@ -76,7 +76,7 @@ const TermsOfService = () => {
           })}
 
           {/* Help Support Box */}
-          <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-emerald-50 rounded-none p-6 border border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <HelpCircle className="w-6 h-6 text-emerald-800 shrink-0" />
               <div>
@@ -85,8 +85,8 @@ const TermsOfService = () => {
               </div>
             </div>
             <a
-              href="mailto:vdhiman@yahoo.com"
-              className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-colors shrink-0"
+              href="mailto:contact@aravez.store"
+              className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-5 py-2.5 rounded-none transition-colors shrink-0"
             >
               Contact Sales Team
             </a>

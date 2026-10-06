@@ -34,7 +34,7 @@ import {
   Star,
   Quote
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, isDummyOrder } from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { Link } from 'react-router-dom';
 import { PRODUCT_CATEGORIES } from './Products';
@@ -55,11 +55,11 @@ const Admin = () => {
   const handleLoginSubmit = (e) => {
     e.preventDefault();
     setLoginError('');
-    const targetEmail = 'vdhiman@yahoo.com';
+    const allowedEmails = ['contact@aravez.store', 'vdhiman@yahoo.com'];
     const targetPassword = 'vdhiman@739';
 
     if (
-      loginEmail.trim().toLowerCase() === targetEmail.toLowerCase() &&
+      allowedEmails.includes(loginEmail.trim().toLowerCase()) &&
       loginPassword === targetPassword
     ) {
       sessionStorage.setItem('aravez_admin_auth', 'true');
@@ -177,8 +177,8 @@ const Admin = () => {
       ]);
       setProducts(prods);
       setOffers(offs);
-      setContacts(msgs);
-      setOrders(ords);
+      setContacts(Array.isArray(msgs) ? msgs.filter(m => m && m.name !== 'Elena Rostova' && m.name !== 'Liam Henderson') : []);
+      setOrders(Array.isArray(ords) ? ords.filter(o => !isDummyOrder(o)) : []);
       setSliders(slds);
       setReviews(revs);
     } catch (err) {
@@ -375,15 +375,39 @@ const Admin = () => {
       ? (productForm.customCategory?.trim() || 'Other')
       : productForm.category;
 
-    // Process features into array (split by newline or comma)
+    // Process features into array:
+    // If entered line-by-line (with newlines), split strictly by line to preserve internal commas!
+    // If entered on a single line with commas, split by comma.
     let featuresArray = [];
     if (typeof productForm.features === 'string' && productForm.features.trim()) {
-      featuresArray = productForm.features
-        .split(/[\n,]/)
-        .map(f => f.trim())
-        .filter(Boolean);
+      const raw = productForm.features.trim();
+      if (raw.includes('\n')) {
+        featuresArray = raw
+          .split(/\r?\n/)
+          .map(f => f.replace(/^[•\-\*]\s*/, '').trim())
+          .filter(Boolean);
+      } else if (raw.includes(',')) {
+        featuresArray = raw
+          .split(',')
+          .map(f => f.replace(/^[•\-\*]\s*/, '').trim())
+          .filter(Boolean);
+      } else {
+        featuresArray = [raw.replace(/^[•\-\*]\s*/, '').trim()];
+      }
     } else if (Array.isArray(productForm.features)) {
       featuresArray = productForm.features;
+    }
+
+    // Process specifications into a clean newline-separated string
+    let specsString = '';
+    if (typeof productForm.specifications === 'string') {
+      specsString = productForm.specifications
+        .split(/\r?\n/)
+        .map(s => s.trim())
+        .filter(Boolean)
+        .join('\n');
+    } else if (Array.isArray(productForm.specifications)) {
+      specsString = productForm.specifications.join('\n');
     }
 
     const payload = {
@@ -394,7 +418,7 @@ const Admin = () => {
       image: mainImage,
       images: allImages,
       features: featuresArray,
-      specifications: productForm.specifications || '',
+      specifications: specsString,
       rating: editingProduct ? editingProduct.rating : 4.9,
       reviewsCount: editingProduct ? editingProduct.reviewsCount : 1,
     };
@@ -435,9 +459,14 @@ const Admin = () => {
       ? product.features.join('\n')
       : (product.features || '');
 
-    const specs = typeof product.specifications === 'object'
-      ? Object.entries(product.specifications).map(([k, v]) => `${k}: ${v}`).join('\n')
-      : (product.specifications || '');
+    let specs = '';
+    if (Array.isArray(product.specifications)) {
+      specs = product.specifications.join('\n');
+    } else if (product.specifications && typeof product.specifications === 'object') {
+      specs = Object.entries(product.specifications).map(([k, v]) => `${k}: ${v}`).join('\n');
+    } else {
+      specs = product.specifications || '';
+    }
 
     setProductForm({
       name: product.name,
@@ -709,19 +738,19 @@ const Admin = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-emerald-950 to-slate-900 flex items-center justify-center p-4 selection:bg-emerald-500 selection:text-white">
-        <div className="max-w-md w-full bg-slate-900/90 border border-emerald-500/20 backdrop-blur-xl rounded-3xl p-6 sm:p-10 shadow-2xl shadow-emerald-950/60 space-y-8 animate-fade-in">
+      <div className="min-h-screen bg-[#111111] flex items-center justify-center p-4 selection:bg-[#ea0028] selection:text-white">
+        <div className="max-w-md w-full bg-[#1d1d1d] border border-gray-800 border-t-4 border-t-[#ea0028] rounded-none p-6 sm:p-10 shadow-2xl space-y-8 animate-fade-in">
           
           {/* Header Badge & Title */}
           <div className="text-center space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-800 to-teal-500 mx-auto flex items-center justify-center shadow-lg shadow-emerald-900/30 border border-emerald-400/20">
+            <div className="w-16 h-16 rounded-none bg-[#ea0028] text-white mx-auto flex items-center justify-center shadow-lg shadow-red-950/40">
               <Lock className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
                 Aravez Admin Portal
               </h1>
-              <p className="text-xs text-emerald-300/80 mt-1 font-medium">
+              <p className="text-xs text-gray-400 mt-1 font-medium">
                 Enter authorized admin credentials to access store dashboard
               </p>
             </div>
@@ -730,13 +759,13 @@ const Admin = () => {
           {/* Login Form */}
           <form onSubmit={handleLoginSubmit} className="space-y-5 text-left">
             {loginError && (
-              <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold text-center animate-shake">
+              <div className="p-3.5 rounded-none bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-bold text-center animate-shake">
                 ⚠️ {loginError}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-bold text-emerald-200 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-bold text-gray-300 mb-1.5 uppercase tracking-wider">
                 Admin Email Address *
               </label>
               <div className="relative">
@@ -746,14 +775,14 @@ const Admin = () => {
                   placeholder=""
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl py-3 pl-10 pr-4 text-xs sm:text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-mono"
+                  className="w-full bg-[#141414] border border-gray-700 rounded-none py-3 pl-10 pr-4 text-xs sm:text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#ea0028] focus:ring-2 focus:ring-[#ea0028]/20 transition-all font-mono"
                 />
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                <Mail className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-emerald-200 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-bold text-gray-300 mb-1.5 uppercase tracking-wider">
                 Admin Password *
               </label>
               <div className="relative">
@@ -763,13 +792,13 @@ const Admin = () => {
                   placeholder=""
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-2xl py-3 pl-10 pr-10 text-xs sm:text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-mono"
+                  className="w-full bg-[#141414] border border-gray-700 rounded-none py-3 pl-10 pr-10 text-xs sm:text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#ea0028] focus:ring-2 focus:ring-[#ea0028]/20 transition-all font-mono"
                 />
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                <Lock className="w-4 h-4 text-gray-500 absolute left-3.5 top-3.5" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3.5 text-slate-500 hover:text-white transition-colors cursor-pointer"
+                  className="absolute right-3.5 top-3.5 text-gray-500 hover:text-white transition-colors cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -778,15 +807,15 @@ const Admin = () => {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold py-3.5 px-6 rounded-2xl text-xs sm:text-sm shadow-xl shadow-emerald-950/50 transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-[#ea0028] hover:bg-[#cc0020] text-white font-extrabold py-3.5 px-6 rounded-none text-xs sm:text-sm shadow-xl shadow-red-950/30 transition-all transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
             >
-              <ShieldCheck className="w-5 h-5 text-emerald-200" />
+              <ShieldCheck className="w-5 h-5 text-white" />
               <span>Unlock Admin Workspace</span>
             </button>
           </form>
 
-          <div className="text-center pt-2 border-t border-slate-800/80">
-            <Link to="/" className="text-xs text-slate-400 hover:text-emerald-400 transition-colors font-medium">
+          <div className="text-center pt-2 border-t border-gray-800">
+            <Link to="/" className="text-xs text-gray-400 hover:text-[#ea0028] transition-colors font-medium">
               ← Return to Main Storefront
             </Link>
           </div>
@@ -796,24 +825,24 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 pb-20">
+    <div className="min-h-screen bg-[#f7f7f8] text-gray-800 pb-20">
       
       {/* Top Admin Navigation Bar */}
-      <header className="bg-emerald-950 text-white border-b border-emerald-900 sticky top-0 z-30 shadow-md">
+      <header className="bg-[#1d1d1d] text-white border-b border-gray-800 sticky top-0 z-30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-18">
             
             {/* Brand / Logo */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-emerald-950 flex items-center justify-center font-bold text-xl shadow-md">
-                🌿
+              <div className="w-10 h-10 rounded-none bg-[#ea0028] text-white flex items-center justify-center font-black text-xl shadow-md tracking-tighter">
+                A
               </div>
               <div>
-                <span className="font-serif text-xl font-bold tracking-tight text-white block">
+                <span className="font-bold text-xl tracking-tight text-white block">
                   Aravez Admin Control
                 </span>
-                <span className="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase">
-                  Live Management Suite
+                <span className="text-[10px] text-[#ea0028] font-semibold tracking-wider uppercase">
+                  Live AV Management Suite
                 </span>
               </div>
             </div>
@@ -822,7 +851,7 @@ const Admin = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={loadAdminData}
-                className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white transition-colors cursor-pointer"
+                className="p-2 rounded-none bg-[#2a2a2a] hover:bg-[#333333] text-gray-200 hover:text-white transition-colors cursor-pointer border border-gray-700"
                 title="Refresh Data"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -830,14 +859,14 @@ const Admin = () => {
               <Link
                 to="/"
                 target="_blank"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm"
+                className="bg-[#2a2a2a] hover:bg-[#ea0028] text-white text-xs font-semibold px-4 py-2 rounded-none flex items-center gap-1.5 transition-all shadow-sm border border-gray-700"
               >
                 <span>View Live Store</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </Link>
               <button
                 onClick={handleLogout}
-                className="bg-rose-900/60 hover:bg-rose-800 text-rose-200 hover:text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-sm cursor-pointer border border-rose-700/50"
+                className="bg-red-950/40 hover:bg-[#ea0028] text-red-200 hover:text-white text-xs font-semibold px-3.5 py-2 rounded-none flex items-center gap-1.5 transition-all shadow-sm cursor-pointer border border-red-800/40"
                 title="Lock & Logout Admin"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -853,7 +882,7 @@ const Admin = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
         
         {/* Navigation Tabs */}
-        <div className="flex items-center overflow-x-auto gap-2 p-1.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="flex items-center overflow-x-auto gap-2 p-1.5 bg-white rounded-none border border-gray-200 shadow-xs">
           {[
             { id: 'overview', label: 'Dashboard Overview', icon: LayoutDashboard, count: null },
             { id: 'sliders', label: 'Hero Sliders', icon: Sliders, count: sliders.length },
@@ -868,18 +897,18 @@ const Admin = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-2 px-5 py-3 rounded-none text-xs sm:text-sm font-semibold transition-all whitespace-nowrap border-b-2 cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-800 text-white shadow-md shadow-emerald-950/20'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-[#1d1d1d] text-white border-[#ea0028] shadow-md'
+                    : 'border-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 }`}
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
                 {tab.count !== null && (
                   <span
-                    className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-                      isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                    className={`text-[11px] px-2 py-0.5 rounded-none font-bold ${
+                      isActive ? 'bg-[#ea0028] text-white' : 'bg-gray-100 text-gray-600'
                     }`}
                   >
                     {tab.count}
@@ -895,48 +924,48 @@ const Admin = () => {
           <div className="space-y-8 animate-fade-in">
             {/* Quick Metrics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm flex items-center justify-between">
+              <div className="bg-white p-6 rounded-none border border-gray-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Home Sliders</span>
-                  <h3 className="font-serif text-3xl font-extrabold text-slate-900 mt-1">{sliders.length}</h3>
-                  <span className="text-xs text-emerald-600 font-semibold mt-1 inline-block">Active Hero Banners</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Home Sliders</span>
+                  <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{sliders.length}</h3>
+                  <span className="text-xs text-gray-600 font-semibold mt-1 inline-block">Active Hero Banners</span>
                 </div>
-                <div className="w-13 h-13 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-none bg-red-50 text-[#ea0028] flex items-center justify-center">
                   <Sliders className="w-6 h-6" />
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm flex items-center justify-between">
+              <div className="bg-white p-6 rounded-none border border-gray-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Products</span>
-                  <h3 className="font-serif text-3xl font-extrabold text-slate-900 mt-1">{products.length}</h3>
-                  <span className="text-xs text-emerald-600 font-semibold mt-1 inline-block">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Products</span>
+                  <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{products.length}</h3>
+                  <span className="text-xs text-[#ea0028] font-bold mt-1 inline-block">
                     {products.filter(p => p.inStock).length} In Stock
                   </span>
                 </div>
-                <div className="w-13 h-13 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-none bg-gray-100 text-[#1d1d1d] flex items-center justify-center">
                   <Package className="w-6 h-6" />
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm flex items-center justify-between">
+              <div className="bg-white p-6 rounded-none border border-gray-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Orders</span>
-                  <h3 className="font-serif text-3xl font-extrabold text-slate-900 mt-1">{orders.length}</h3>
-                  <span className="text-xs text-emerald-600 font-semibold mt-1 inline-block">Paid Online Orders</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Orders</span>
+                  <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{orders.length}</h3>
+                  <span className="text-xs text-gray-600 font-semibold mt-1 inline-block">Paid Online Orders</span>
                 </div>
-                <div className="w-13 h-13 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-none bg-amber-50 text-amber-700 flex items-center justify-center">
                   <ShoppingBag className="w-6 h-6" />
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm flex items-center justify-between">
+              <div className="bg-white p-6 rounded-none border border-gray-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Inquiries</span>
-                  <h3 className="font-serif text-3xl font-extrabold text-slate-900 mt-1">{contacts.length}</h3>
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Inquiries</span>
+                  <h3 className="text-3xl font-extrabold text-gray-900 mt-1">{contacts.length}</h3>
                   <span className="text-xs text-rose-600 font-semibold mt-1 inline-block">Customer Messages</span>
                 </div>
-                <div className="w-13 h-13 rounded-2xl bg-rose-100 text-rose-800 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-none bg-rose-50 text-rose-700 flex items-center justify-center">
                   <Mail className="w-6 h-6" />
                 </div>
               </div>
@@ -946,15 +975,15 @@ const Admin = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               
               {/* Left Column: Quick Action Cards */}
-              <div className="lg:col-span-6 bg-gradient-to-br from-emerald-900 to-teal-950 text-white rounded-3xl p-8 shadow-xl relative overflow-hidden flex flex-col justify-between">
+              <div className="lg:col-span-6 bg-[#1d1d1d] text-white border border-gray-800 rounded-none p-8 shadow-xl relative overflow-hidden flex flex-col justify-between">
                 <div className="relative z-10 space-y-4">
-                  <span className="inline-block px-3 py-1 bg-emerald-800 text-emerald-300 rounded-full text-xs font-bold uppercase tracking-wider">
+                  <span className="inline-block px-3 py-1 bg-[#2a2a2a] text-[#ea0028] border border-red-500/30 rounded-none text-xs font-bold uppercase tracking-wider">
                     ⚡ Quick Operations
                   </span>
-                  <h2 className="font-serif text-2xl sm:text-3xl font-bold">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
                     Manage Your Aravez Store & Home Sliders
                   </h2>
-                  <p className="text-emerald-100/80 text-xs sm:text-sm leading-relaxed">
+                  <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
                     Upload new promotional hero slides directly from your computer, add products, or manage customer messages.
                   </p>
                 </div>
@@ -966,7 +995,7 @@ const Admin = () => {
                       setSliderForm(initialSliderForm);
                       setIsAddSliderOpen(true);
                     }}
-                    className="bg-emerald-400 hover:bg-emerald-300 text-emerald-950 font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-md transition-transform hover:scale-105"
+                    className="bg-[#ea0028] hover:bg-[#cc0020] text-white font-bold px-5 py-2.5 rounded-none text-xs flex items-center gap-2 shadow-md transition-transform hover:scale-105 cursor-pointer"
                   >
                     <UploadCloud className="w-4 h-4" />
                     <span>Upload Slide from PC</span>
@@ -978,43 +1007,43 @@ const Admin = () => {
                       setProductForm(initialProductForm);
                       setIsAddProductOpen(true);
                     }}
-                    className="bg-white hover:bg-emerald-50 text-emerald-950 font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-md transition-transform hover:scale-105"
+                    className="bg-[#2a2a2a] hover:bg-gray-800 text-white font-bold px-5 py-2.5 rounded-none text-xs flex items-center gap-2 shadow-md transition-transform hover:scale-105 border border-gray-700 cursor-pointer"
                   >
-                    <Plus className="w-4 h-4 text-emerald-700" />
+                    <Plus className="w-4 h-4 text-[#ea0028]" />
                     <span>Add New Product</span>
                   </button>
                 </div>
               </div>
 
               {/* Right Column: Recent Inquiries Preview */}
-              <div className="lg:col-span-6 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-4">
+              <div className="lg:col-span-6 bg-white rounded-none p-6 sm:p-8 border border-gray-200 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-serif text-lg font-bold text-slate-900">Recent Customer Inquiries</h3>
+                  <h3 className="text-lg font-bold text-gray-900">Recent Customer Inquiries</h3>
                   <button
                     onClick={() => setActiveTab('contacts')}
-                    className="text-xs font-semibold text-emerald-700 hover:underline"
+                    className="text-xs font-bold text-[#ea0028] hover:underline cursor-pointer"
                   >
                     View all ({contacts.length}) →
                   </button>
                 </div>
 
                 {contacts.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-slate-400">
+                  <div className="py-8 text-center text-xs text-gray-400">
                     No customer messages yet.
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100 space-y-3">
+                  <div className="divide-y divide-gray-100 space-y-3">
                     {contacts.slice(0, 3).map((item) => (
                       <div key={item._id} className="pt-3 first:pt-0 flex items-start justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-slate-800">{item.name}</span>
-                            <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-md">
+                            <span className="font-bold text-xs text-gray-900">{item.name}</span>
+                            <span className="text-[10px] bg-red-50 text-[#ea0028] font-bold px-2 py-0.5 rounded-none">
                               {item.subject}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-500 mt-1 line-clamp-1">{item.message}</p>
-                          <span className="text-[10px] text-slate-400">{item.email}</span>
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-1">{item.message}</p>
+                          <span className="text-[10px] text-gray-400">{item.email}</span>
                         </div>
                       </div>
                     ))}
@@ -1033,7 +1062,7 @@ const Admin = () => {
             {/* Header & Regular Add Button */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
               <div>
-                <h3 className="font-serif text-2xl font-bold text-slate-900">Active Home Page Hero Sliders</h3>
+                <h3 className="font-bold text-2xl text-slate-900">Active Home Page Hero Sliders</h3>
                 <p className="text-xs text-slate-500 mt-1">Total {sliders.length} slides currently configured.</p>
               </div>
               <button
@@ -1042,7 +1071,7 @@ const Admin = () => {
                   setSliderForm(initialSliderForm);
                   setIsAddSliderOpen(true);
                 }}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center gap-2 shadow-md transition-transform hover:scale-102"
+                className="bg-[#ea0028] hover:bg-[#cc0020] text-white font-bold px-6 py-3 rounded-none text-xs flex items-center gap-2 shadow-md transition-transform hover:scale-102 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Custom Slide</span>
@@ -1054,7 +1083,7 @@ const Admin = () => {
               {sliders.map((slide, idx) => (
                 <div
                   key={slide._id || idx}
-                  className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+                  className="bg-white rounded-none border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
                 >
                   <div className="relative aspect-video bg-slate-100">
                     <img
@@ -1062,14 +1091,14 @@ const Admin = () => {
                       alt={`Slide ${idx + 1}`}
                       className="w-full h-full object-cover"
                     />
-                    <span className="absolute top-3 left-3 bg-emerald-950/80 text-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur-md shadow-xs">
+                    <span className="absolute top-3 left-3 bg-[#1d1d1d]/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-none backdrop-blur-md shadow-xs">
                       Slide #{idx + 1}
                     </span>
                     <button
                       onClick={() => handleToggleSliderActive(slide)}
-                      className={`absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm cursor-pointer transition-colors ${
+                      className={`absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-none shadow-sm cursor-pointer transition-colors ${
                         slide.isActive !== false
-                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          ? 'bg-[#ea0028] text-white hover:bg-[#cc0020]'
                           : 'bg-slate-600 text-white hover:bg-slate-700'
                       }`}
                     >
@@ -1082,14 +1111,14 @@ const Admin = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEditSlider(slide)}
-                        className="p-2 rounded-xl bg-white hover:bg-emerald-100 text-slate-600 hover:text-emerald-800 border border-slate-200 transition-colors cursor-pointer"
+                        className="p-2 rounded-none bg-white hover:bg-red-50 text-slate-600 hover:text-[#ea0028] border border-slate-200 transition-colors cursor-pointer"
                         title="Edit Slide"
                       >
                         <Edit className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDeleteSlider(slide._id, `Slide #${idx + 1}`)}
-                        className="p-2 rounded-xl bg-white hover:bg-rose-100 text-slate-600 hover:text-rose-700 border border-slate-200 transition-colors cursor-pointer"
+                        className="p-2 rounded-none bg-white hover:bg-rose-100 text-slate-600 hover:text-rose-700 border border-slate-200 transition-colors cursor-pointer"
                         title="Delete Slide"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -1106,7 +1135,7 @@ const Admin = () => {
         {activeTab === 'products' && (
           <div className="space-y-6 animate-fade-in">
             {/* Action Bar */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="bg-white rounded-none p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex flex-1 items-center gap-3 w-full md:w-auto">
                 <div className="relative flex-1 max-w-md">
                   <input
@@ -1114,7 +1143,7 @@ const Admin = () => {
                     placeholder="Search product by title or category..."
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-4 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-none py-2.5 pl-9 pr-4 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#ea0028]"
                   />
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 </div>
@@ -1122,7 +1151,7 @@ const Admin = () => {
                 <select
                   value={selectedCatFilter}
                   onChange={(e) => setSelectedCatFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs sm:text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="bg-slate-50 border border-slate-200 rounded-none py-2.5 px-3 text-xs sm:text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#ea0028]"
                 >
                   {PRODUCT_CATEGORIES.map((c) => (
                     <option key={c} value={c === 'All Products' ? 'All' : c}>
@@ -1138,7 +1167,7 @@ const Admin = () => {
                   setProductForm(initialProductForm);
                   setIsAddProductOpen(true);
                 }}
-                className="w-full md:w-auto bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-6 py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-transform hover:scale-102"
+                className="w-full md:w-auto bg-[#ea0028] hover:bg-[#cc0020] text-white font-bold px-6 py-3 rounded-none text-xs flex items-center justify-center gap-2 shadow-md transition-transform hover:scale-102 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add New Product</span>
@@ -1146,7 +1175,7 @@ const Admin = () => {
             </div>
 
             {/* Products Table */}
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
@@ -1173,7 +1202,7 @@ const Admin = () => {
                               <img
                                 src={p.image}
                                 alt={p.name}
-                                className="w-12 h-12 object-cover rounded-xl border border-slate-200 bg-slate-100 shrink-0"
+                                className="w-12 h-12 object-cover rounded-none border border-slate-200 bg-slate-100 shrink-0"
                               />
                               <div>
                                 <h4 className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-1">{p.name}</h4>
@@ -1182,7 +1211,7 @@ const Admin = () => {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <span className="bg-emerald-50 text-emerald-800 font-semibold px-2.5 py-1 rounded-md text-[11px]">
+                            <span className="bg-red-50 text-[#ea0028] border border-red-100 font-bold px-2.5 py-1 rounded-none text-[11px]">
                               {p.category}
                             </span>
                           </td>
@@ -1195,12 +1224,12 @@ const Admin = () => {
                           <td className="py-4 px-4">
                             <div className="flex gap-1 flex-wrap">
                               {p.isBestSeller && (
-                                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded">
+                                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-none">
                                   Best Seller
                                 </span>
                               )}
                               {p.isFeatured && (
-                                <span className="bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5 rounded">
+                                <span className="bg-red-100 text-[#ea0028] border border-red-200 text-[10px] font-bold px-2 py-0.5 rounded-none">
                                   Featured
                                 </span>
                               )}
@@ -1210,14 +1239,14 @@ const Admin = () => {
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => handleEditClick(p)}
-                                className="p-2 rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-800 transition-colors"
+                                className="p-2 rounded-none bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-[#ea0028] border border-slate-200 transition-colors cursor-pointer"
                                 title="Edit Product"
                               >
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleDeleteProduct(p._id, p.name)}
-                                className="p-2 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
+                                className="p-2 rounded-none bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 border border-slate-200 transition-colors cursor-pointer"
                                 title="Delete Product"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1239,7 +1268,7 @@ const Admin = () => {
           <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-serif text-2xl font-bold text-slate-900">Customer Messages & Inquiries</h3>
+                <h3 className="font-bold text-2xl text-slate-900">Customer Messages & Inquiries</h3>
                 <p className="text-xs text-slate-500 mt-1">Direct inquiries submitted through the Contact Us form.</p>
               </div>
               <span className="text-xs font-semibold text-slate-500">
@@ -1249,19 +1278,19 @@ const Admin = () => {
 
             <div className="space-y-4">
               {contacts.length === 0 ? (
-                <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 text-slate-400 text-xs">
+                <div className="bg-white rounded-none p-12 text-center border border-slate-200 text-slate-400 text-xs">
                   No inquiries received yet.
                 </div>
               ) : (
                 contacts.map((msg) => (
                   <div
                     key={msg._id}
-                    className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between gap-4"
+                    className="bg-white rounded-none p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between gap-4"
                   >
                     <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-3">
                         <h4 className="font-bold text-slate-900 text-sm">{msg.name}</h4>
-                        <span className="bg-emerald-50 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                        <span className="bg-red-50 text-[#ea0028] border border-red-100 text-[10px] font-bold px-2.5 py-0.5 rounded-none">
                           {msg.subject}
                         </span>
                       </div>
@@ -1270,7 +1299,7 @@ const Admin = () => {
                         {msg.phone && <span>📞 {msg.phone}</span>}
                         {msg.createdAt && <span>🗓️ {new Date(msg.createdAt).toLocaleDateString()}</span>}
                       </div>
-                      <p className="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 leading-relaxed mt-2">
+                      <p className="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-none border border-slate-100 leading-relaxed mt-2">
                         "{msg.message}"
                       </p>
                     </div>
@@ -1278,13 +1307,13 @@ const Admin = () => {
                     <div className="flex md:flex-col justify-end items-end gap-2 shrink-0">
                       <a
                         href={`mailto:${msg.email}?subject=Aravez Care: In response to your inquiry`}
-                        className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-colors"
+                        className="bg-[#ea0028] hover:bg-[#cc0020] text-white text-xs font-bold px-4 py-2 rounded-none transition-colors"
                       >
                         Reply via Email
                       </a>
                       <button
                         onClick={() => handleDeleteContact(msg._id)}
-                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors"
+                        className="p-2 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                         title="Delete message"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1302,32 +1331,32 @@ const Admin = () => {
           <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="font-serif text-2xl font-bold text-slate-900">Customer Orders Manager</h3>
+                <h3 className="font-bold text-2xl text-slate-900">Customer Orders Manager</h3>
                 <p className="text-xs text-slate-500 mt-1">
                   Track online paid orders, customer delivery details, and update shipment status.
                 </p>
               </div>
-              <div className="bg-emerald-50 text-emerald-900 px-4 py-2 rounded-xl text-xs font-bold border border-emerald-200 shadow-xs flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-emerald-700" />
+              <div className="bg-red-50 text-[#ea0028] px-4 py-2 rounded-none text-xs font-bold border border-red-200 shadow-xs flex items-center gap-2">
+                <ShoppingBag className="w-4 h-4 text-[#ea0028]" />
                 <span>Total Orders: {orders.length}</span>
               </div>
             </div>
 
             <div className="space-y-4">
               {orders.length === 0 ? (
-                <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 text-slate-400 text-xs">
+                <div className="bg-white rounded-none p-12 text-center border border-slate-200 text-slate-400 text-xs">
                   No customer orders received yet.
                 </div>
               ) : (
                 orders.map((ord) => (
                   <div
                     key={ord._id || ord.orderId}
-                    className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4 hover:shadow-md transition-shadow"
+                    className="bg-white rounded-none p-6 border border-slate-200 shadow-sm space-y-4 hover:shadow-md transition-shadow"
                   >
                     {/* Top Row: Order ID & Badges */}
                     <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-sm bg-slate-100 text-slate-900 px-3 py-1 rounded-xl">
+                        <span className="font-mono font-bold text-sm bg-slate-100 text-slate-900 px-3 py-1 rounded-none">
                           {ord.orderId}
                         </span>
                         <span className="text-xs text-slate-400 font-medium">
@@ -1336,16 +1365,16 @@ const Admin = () => {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200">
+                        <span className="bg-[#1d1d1d] text-white text-xs font-bold px-3 py-1 rounded-none">
                           {ord.paymentStatus || 'PAID'} ({ord.paymentMethod || 'Online Payment'})
                         </span>
                         
                         <select
                           value={ord.status || 'Processing'}
                           onChange={(e) => handleUpdateOrderStatus(ord.orderId || ord._id, e.target.value)}
-                          className={`text-xs font-bold px-3 py-1 rounded-full border focus:outline-none cursor-pointer ${
+                          className={`text-xs font-bold px-3 py-1 rounded-none border focus:outline-none cursor-pointer ${
                             ord.status === 'Delivered'
-                              ? 'bg-emerald-700 text-white border-emerald-800'
+                              ? 'bg-[#1d1d1d] text-white border-gray-800'
                               : ord.status === 'Shipped'
                               ? 'bg-blue-600 text-white border-blue-700'
                               : 'bg-amber-100 text-amber-900 border-amber-300'
@@ -1362,7 +1391,7 @@ const Admin = () => {
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-6 text-xs">
                       
                       {/* Customer & Delivery Column */}
-                      <div className="md:col-span-5 bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-1.5">
+                      <div className="md:col-span-5 bg-slate-50 p-4 rounded-none border border-slate-100 space-y-1.5">
                         <h4 className="font-bold text-slate-900 text-sm mb-1">{ord.customer?.name}</h4>
                         <p className="text-slate-600">📞 <strong>Phone:</strong> {ord.customer?.phone}</p>
                         <p className="text-slate-600">📧 <strong>Email:</strong> {ord.customer?.email}</p>
@@ -1385,7 +1414,7 @@ const Admin = () => {
 
                         <div className="pt-3 border-t border-slate-100 flex items-center justify-between font-bold text-sm">
                           <span className="text-slate-700">Total Order Amount:</span>
-                          <span className="text-emerald-800 text-base">₹{Number(ord.totalAmount).toLocaleString('en-IN')}</span>
+                          <span className="text-[#ea0028] text-base font-extrabold">₹{Number(ord.totalAmount).toLocaleString('en-IN')}</span>
                         </div>
                       </div>
 
@@ -1395,7 +1424,7 @@ const Admin = () => {
                     <div className="flex justify-end pt-2">
                       <button
                         onClick={() => handleDeleteOrder(ord.orderId || ord._id)}
-                        className="text-xs text-rose-600 hover:text-rose-800 hover:underline flex items-center gap-1"
+                        className="text-xs text-rose-600 hover:text-rose-800 hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Delete Order</span>
@@ -1413,9 +1442,9 @@ const Admin = () => {
         {activeTab === 'reviews' && (
           <div className="space-y-6 animate-fade-in">
             {/* Action Bar */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <div className="bg-white p-6 rounded-none border border-slate-200/90 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
               <div>
-                <h3 className="font-serif font-bold text-xl text-slate-900 flex items-center gap-2">
+                <h3 className="font-bold text-xl text-slate-900 flex items-center gap-2">
                   <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
                   <span>Stories & Reviews Manager</span>
                 </h3>
@@ -1431,7 +1460,7 @@ const Admin = () => {
                   setReviewForm(initialReviewForm);
                   setIsAddReviewOpen(true);
                 }}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-5 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/20 transition-all hover:scale-102 cursor-pointer"
+                className="bg-[#ea0028] hover:bg-[#cc0020] text-white text-xs font-bold px-5 py-3 rounded-none flex items-center justify-center gap-2 shadow-md transition-all hover:scale-102 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add New Review</span>
@@ -1441,9 +1470,9 @@ const Admin = () => {
             {/* Reviews Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {reviews.length === 0 ? (
-                <div className="col-span-full bg-white rounded-3xl p-12 text-center border border-dashed border-slate-300">
+                <div className="col-span-full bg-white rounded-none p-12 text-center border border-dashed border-slate-300">
                   <Star className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <h4 className="font-serif font-bold text-slate-700 text-base">No Customer Reviews Yet</h4>
+                  <h4 className="font-bold text-slate-700 text-base">No Customer Reviews Yet</h4>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                     Click "Add New Review" to publish your first client story with star rating, photo, and company name to the landing page!
                   </p>
@@ -1452,7 +1481,7 @@ const Admin = () => {
                 reviews.map((rev) => (
                   <div
                     key={rev._id}
-                    className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between hover:shadow-md transition-all space-y-4 relative group"
+                    className="bg-white rounded-none p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between hover:shadow-md transition-all space-y-4 relative group"
                   >
                     <div>
                       {/* Top Row: Rating & Active Status */}
@@ -1466,9 +1495,9 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={() => handleToggleReviewActive(rev)}
-                          className={`text-[11px] font-bold px-3 py-1 rounded-full border transition-all cursor-pointer ${
+                          className={`text-[11px] font-bold px-3 py-1 rounded-none border transition-all cursor-pointer ${
                             rev.isActive !== false
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              ? 'bg-red-50 text-[#ea0028] border-red-200'
                               : 'bg-slate-100 text-slate-500 border-slate-200'
                           }`}
                         >
@@ -1488,11 +1517,11 @@ const Admin = () => {
                         <img
                           src={rev.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
                           alt={rev.name}
-                          className="w-10 h-10 rounded-full object-cover border border-emerald-200 shrink-0"
+                          className="w-10 h-10 rounded-none object-cover border border-slate-200 shrink-0"
                         />
                         <div className="min-w-0">
                           <h4 className="font-bold text-xs text-slate-900 truncate">{rev.name}</h4>
-                          <span className="text-[11px] text-emerald-700 font-medium block truncate">
+                          <span className="text-[11px] text-slate-600 font-medium block truncate">
                             {rev.businessName ? `${rev.businessName} • ${rev.role}` : rev.role}
                           </span>
                         </div>
@@ -1503,7 +1532,7 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={() => handleEditReview(rev)}
-                          className="p-2 rounded-xl bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-800 transition-colors cursor-pointer"
+                          className="p-2 rounded-none bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-[#ea0028] border border-slate-200 transition-colors cursor-pointer"
                           title="Edit Review"
                         >
                           <Edit className="w-3.5 h-3.5" />
@@ -1511,7 +1540,7 @@ const Admin = () => {
                         <button
                           type="button"
                           onClick={() => handleDeleteReview(rev._id, rev.name)}
-                          className="p-2 rounded-xl bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors cursor-pointer"
+                          className="p-2 rounded-none bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors cursor-pointer"
                           title="Delete Review"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1531,23 +1560,23 @@ const Admin = () => {
       {isAddSliderOpen && (
         <div className="fixed inset-0 z-50 bg-slate-100/95 backdrop-blur-md overflow-y-auto animate-fade-in flex flex-col min-h-screen">
           {/* Top Sticky Navigation Bar */}
-          <div className="sticky top-0 z-30 bg-emerald-950 text-white px-6 py-4 shadow-xl border-b border-emerald-900 flex items-center justify-between">
+          <div className="sticky top-0 z-30 bg-[#1d1d1d] text-white px-6 py-4 shadow-xl border-b border-gray-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setIsAddSliderOpen(false)}
-                className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                className="p-2 rounded-none bg-[#2a2a2a] hover:bg-[#333333] text-gray-300 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
               >
                 <X className="w-5 h-5" />
                 <span>Close Studio</span>
               </button>
-              <div className="h-6 w-[1px] bg-emerald-800" />
+              <div className="h-6 w-[1px] bg-gray-700" />
               <div>
-                <h2 className="font-serif text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                  <Sliders className="w-5 h-5 text-emerald-400" />
+                <h2 className="font-bold text-lg sm:text-xl text-white flex items-center gap-2">
+                  <Sliders className="w-5 h-5 text-[#ea0028]" />
                   <span>{editingSlider ? 'Edit Hero Banner Slide' : 'Hero Banner Creation Studio'}</span>
                 </h2>
-                <span className="text-[11px] text-emerald-300">Upload banner image & set headline text for landing page carousel</span>
+                <span className="text-[11px] text-gray-400">Upload banner image & set headline text for landing page carousel</span>
               </div>
             </div>
 
@@ -1555,14 +1584,14 @@ const Admin = () => {
               <button
                 type="button"
                 onClick={() => setIsAddSliderOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-emerald-200 hover:text-white hover:bg-emerald-900 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-none text-xs font-semibold text-gray-300 hover:text-white hover:bg-[#2a2a2a] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={(e) => handleSaveSlider(e)}
-                className="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold px-6 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-900/40 transition-all transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
+                className="bg-[#ea0028] hover:bg-[#cc0020] text-white font-bold px-6 py-2.5 rounded-none text-xs shadow-lg shadow-red-950/40 transition-all transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>{editingSlider ? 'Save & Update Slide' : 'Publish Banner Slide'}</span>
@@ -1573,10 +1602,10 @@ const Admin = () => {
           {/* Studio Workspace Content */}
           <div className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-8 space-y-6">
             <form onSubmit={handleSaveSlider} className="space-y-6 text-xs">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
+              <div className="bg-white rounded-none p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div>
-                    <h3 className="font-serif font-bold text-lg text-slate-900">Upload Hero Banner Image</h3>
+                    <h3 className="font-bold text-lg text-slate-900">Upload Hero Banner Image</h3>
                     <p className="text-xs text-slate-500">Select image from PC (Recommended size: 100% width x 60vh height)</p>
                   </div>
                 </div>
@@ -1590,24 +1619,24 @@ const Admin = () => {
                 />
 
                 {sliderForm.image ? (
-                  <div className="relative rounded-2xl overflow-hidden border-2 border-emerald-500 bg-slate-100 aspect-video flex items-center justify-center group shadow-md">
+                  <div className="relative rounded-none overflow-hidden border-2 border-[#ea0028] bg-slate-100 aspect-video flex items-center justify-center group shadow-md">
                     <img
                       src={sliderForm.image}
                       alt="Selected preview"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-emerald-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                    <div className="absolute inset-0 bg-[#111111]/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                       <button
                         type="button"
                         onClick={() => sliderFileInputRef.current?.click()}
-                        className="bg-white text-emerald-950 font-bold px-4 py-2.5 rounded-xl text-xs shadow-md hover:bg-emerald-50 transition-colors cursor-pointer"
+                        className="bg-white text-slate-900 font-bold px-4 py-2.5 rounded-none text-xs shadow-md hover:bg-red-50 hover:text-[#ea0028] transition-colors cursor-pointer"
                       >
                         Change Photo
                       </button>
                       <button
                         type="button"
                         onClick={() => setSliderForm(prev => ({ ...prev, image: '' }))}
-                        className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-md transition-colors cursor-pointer"
+                        className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2.5 rounded-none text-xs shadow-md transition-colors cursor-pointer"
                       >
                         Remove Photo
                       </button>
@@ -1616,29 +1645,29 @@ const Admin = () => {
                 ) : (
                   <div
                     onClick={() => !isUploadingSliderImage && sliderFileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all flex flex-col items-center justify-center gap-3 group ${
+                    className={`border-2 border-dashed rounded-none p-10 text-center transition-all flex flex-col items-center justify-center gap-3 group ${
                       isUploadingSliderImage
-                        ? 'border-emerald-500 bg-emerald-100/50 cursor-wait'
-                        : 'border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50 cursor-pointer'
+                        ? 'border-[#ea0028] bg-red-50/50 cursor-wait'
+                        : 'border-slate-300 hover:border-[#ea0028] bg-slate-50/50 hover:bg-red-50/20 cursor-pointer'
                     }`}
                   >
                     {isUploadingSliderImage ? (
                       <>
-                        <div className="w-16 h-16 rounded-2xl bg-emerald-200 text-emerald-900 flex items-center justify-center shadow-xs">
-                          <Loader2 className="w-8 h-8 animate-spin text-emerald-800" />
+                        <div className="w-16 h-16 rounded-none bg-red-100 text-[#ea0028] flex items-center justify-center shadow-xs">
+                          <Loader2 className="w-8 h-8 animate-spin text-[#ea0028]" />
                         </div>
                         <div>
-                          <span className="font-bold text-emerald-950 text-base block">Uploading Banner Image to Cloudinary...</span>
-                          <span className="text-xs text-emerald-700 font-medium">Processing high-res image, please wait...</span>
+                          <span className="font-bold text-slate-900 text-base block">Uploading Banner Image to Cloudinary...</span>
+                          <span className="text-xs text-[#ea0028] font-medium">Processing high-res image, please wait...</span>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                        <div className="w-16 h-16 rounded-none bg-red-50 text-[#ea0028] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
                           <UploadCloud className="w-8 h-8" />
                         </div>
                         <div>
-                          <span className="font-bold text-emerald-950 text-base block">Click to Browse Local Computer Image</span>
+                          <span className="font-bold text-slate-900 text-base block">Click to Browse Local Computer Image</span>
                           <span className="text-xs text-slate-500">Supports JPG, PNG, WEBP files</span>
                         </div>
                       </>
@@ -1656,7 +1685,7 @@ const Admin = () => {
                     placeholder="https://images.unsplash.com/..."
                     value={sliderForm.image.startsWith('data:') ? '' : sliderForm.image}
                     onChange={(e) => setSliderForm({ ...sliderForm, image: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-none px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#ea0028] font-medium"
                   />
                 </div>
 
@@ -1664,13 +1693,13 @@ const Admin = () => {
                   <button
                     type="button"
                     onClick={() => setIsAddSliderOpen(false)}
-                    className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
+                    className="px-6 py-3 rounded-none border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold px-8 py-3 rounded-xl text-xs shadow-lg shadow-emerald-900/30 transition-transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
+                    className="bg-[#ea0028] hover:bg-[#cc0020] text-white font-extrabold px-8 py-3 rounded-none text-xs shadow-lg shadow-red-950/20 transition-transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
                   >
                     <UploadCloud className="w-4 h-4" />
                     <span>{editingSlider ? 'Update Slide' : 'Publish Banner Slide to Home Page'}</span>
@@ -1687,23 +1716,23 @@ const Admin = () => {
       {isAddReviewOpen && (
         <div className="fixed inset-0 z-50 bg-slate-100/95 backdrop-blur-md overflow-y-auto animate-fade-in flex flex-col min-h-screen">
           {/* Top Sticky Navigation Bar */}
-          <div className="sticky top-0 z-30 bg-emerald-950 text-white px-6 py-4 shadow-xl border-b border-emerald-900 flex items-center justify-between">
+          <div className="sticky top-0 z-30 bg-[#1d1d1d] text-white px-6 py-4 shadow-xl border-b border-gray-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setIsAddReviewOpen(false)}
-                className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                className="p-2 rounded-none bg-[#2a2a2a] hover:bg-[#333333] text-gray-300 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
               >
                 <X className="w-5 h-5" />
                 <span>Close Studio</span>
               </button>
-              <div className="h-6 w-[1px] bg-emerald-800" />
+              <div className="h-6 w-[1px] bg-gray-700" />
               <div>
-                <h2 className="font-serif text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                <h2 className="font-bold text-lg sm:text-xl text-white flex items-center gap-2">
                   <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
                   <span>{editingReview ? 'Edit Community Review' : 'Create New Community Review'}</span>
                 </h2>
-                <span className="text-xs text-emerald-300">
+                <span className="text-xs text-gray-400">
                   Manage client testimonials, ratings & business feedback for Aravez Landing Page
                 </span>
               </div>
@@ -1713,7 +1742,7 @@ const Admin = () => {
               <button
                 type="button"
                 onClick={handleSaveReview}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-emerald-950/30 flex items-center gap-2 transition-all hover:scale-102 cursor-pointer"
+                className="bg-[#ea0028] hover:bg-[#cc0020] text-white text-xs font-bold px-6 py-2.5 rounded-none shadow-lg shadow-red-950/40 flex items-center gap-2 transition-all hover:scale-102 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>{editingReview ? 'Update Review' : 'Publish Review'}</span>
@@ -1726,9 +1755,9 @@ const Admin = () => {
             <form onSubmit={handleSaveReview} className="space-y-6">
               
               {/* Reviewer Details Card */}
-              <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6">
-                <h3 className="font-serif font-bold text-lg text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-emerald-700" />
+              <div className="bg-white rounded-none p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6">
+                <h3 className="font-bold text-lg text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#ea0028]" />
                   <span>Client & Organization Information</span>
                 </h3>
 
@@ -1741,7 +1770,7 @@ const Admin = () => {
                       placeholder="e.g. Rajesh Sharma"
                       value={reviewForm.name}
                       onChange={(e) => setReviewForm({ ...reviewForm, name: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-none px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#ea0028] font-medium"
                     />
                   </div>
 
@@ -1752,7 +1781,7 @@ const Admin = () => {
                       placeholder="e.g. Apex Educational Trust / TechCorp"
                       value={reviewForm.businessName}
                       onChange={(e) => setReviewForm({ ...reviewForm, businessName: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-none px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#ea0028] font-medium"
                     />
                   </div>
 
@@ -1763,7 +1792,7 @@ const Admin = () => {
                       placeholder="e.g. IT Director / Verified Client"
                       value={reviewForm.role}
                       onChange={(e) => setReviewForm({ ...reviewForm, role: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-none px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#ea0028] font-medium"
                     />
                   </div>
 
@@ -1796,11 +1825,11 @@ const Admin = () => {
                 {/* Avatar / Photo Upload */}
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-1.5">Client Photo / Company Logo</label>
-                  <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-50 p-4 rounded-none border border-slate-200">
                     <img
                       src={reviewForm.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
                       alt="Avatar preview"
-                      className="w-16 h-16 rounded-full object-cover border-2 border-emerald-300 shadow-sm shrink-0"
+                      className="w-16 h-16 rounded-none object-cover border-2 border-red-200 shadow-sm shrink-0"
                     />
                     <div className="flex-1 space-y-2 w-full">
                       <input
@@ -1815,16 +1844,16 @@ const Admin = () => {
                           type="button"
                           disabled={isUploadingReviewAvatar}
                           onClick={() => reviewFileInputRef.current?.click()}
-                          className="bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold px-4 py-2 rounded-xl border border-slate-200 shadow-xs flex items-center gap-2 cursor-pointer transition-colors"
+                          className="bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold px-4 py-2 rounded-none border border-slate-200 shadow-xs flex items-center gap-2 cursor-pointer transition-colors"
                         >
                           {isUploadingReviewAvatar ? (
                             <>
-                              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#ea0028]" />
                               <span>Uploading Photo...</span>
                             </>
                           ) : (
                             <>
-                              <Camera className="w-3.5 h-3.5 text-emerald-700" />
+                              <Camera className="w-3.5 h-3.5 text-[#ea0028]" />
                               <span>Upload Photo / Logo</span>
                             </>
                           )}
@@ -1835,7 +1864,7 @@ const Admin = () => {
                         placeholder="Or enter direct photo URL..."
                         value={reviewForm.avatar}
                         onChange={(e) => setReviewForm({ ...reviewForm, avatar: e.target.value })}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+                        className="w-full bg-white border border-slate-200 rounded-none px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#ea0028] font-mono"
                       />
                     </div>
                   </div>
@@ -1850,7 +1879,7 @@ const Admin = () => {
                     placeholder="Write client testimonial or feedback regarding Aravez AV installation, products, or service..."
                     value={reviewForm.comment}
                     onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y leading-relaxed font-medium"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-none px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#ea0028] resize-y leading-relaxed font-medium"
                   />
                 </div>
 
@@ -1861,7 +1890,7 @@ const Admin = () => {
                     id="reviewIsActive"
                     checked={reviewForm.isActive}
                     onChange={(e) => setReviewForm({ ...reviewForm, isActive: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer"
+                    className="accent-[#ea0028] w-4 h-4 rounded-none cursor-pointer"
                   />
                   <label htmlFor="reviewIsActive" className="text-xs font-bold text-slate-800 cursor-pointer">
                     Show immediately in "Stories From Our Community" on Landing Page
@@ -1875,13 +1904,13 @@ const Admin = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddReviewOpen(false)}
-                  className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  className="px-6 py-3 rounded-none bg-white border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-8 py-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-xs font-bold text-white shadow-lg shadow-emerald-950/20 cursor-pointer flex items-center gap-2"
+                  className="px-8 py-3 rounded-none bg-[#ea0028] hover:bg-[#cc0020] text-xs font-bold text-white shadow-lg shadow-red-950/20 cursor-pointer flex items-center gap-2"
                 >
                   <Check className="w-4 h-4" />
                   <span>{editingReview ? 'Save & Update Review' : 'Publish Review to Storefront'}</span>
@@ -1897,23 +1926,23 @@ const Admin = () => {
       {isAddProductOpen && (
         <div className="fixed inset-0 z-50 bg-slate-100/95 backdrop-blur-md overflow-y-auto animate-fade-in flex flex-col min-h-screen">
           {/* Top Sticky Navigation Bar */}
-          <div className="sticky top-0 z-30 bg-emerald-950 text-white px-6 py-4 shadow-xl border-b border-emerald-900 flex items-center justify-between">
+          <div className="sticky top-0 z-30 bg-[#1d1d1d] text-white px-6 py-4 shadow-xl border-b border-gray-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setIsAddProductOpen(false)}
-                className="p-2 rounded-xl bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold"
+                className="p-2 rounded-none bg-[#2a2a2a] hover:bg-[#333333] text-gray-300 hover:text-white transition-all flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
               >
                 <X className="w-5 h-5" />
                 <span>Close Studio</span>
               </button>
-              <div className="h-6 w-[1px] bg-emerald-800" />
+              <div className="h-6 w-[1px] bg-gray-700" />
               <div>
-                <h2 className="font-serif text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                  <Package className="w-5 h-5 text-emerald-400" />
+                <h2 className="font-bold text-lg sm:text-xl text-white flex items-center gap-2">
+                  <Package className="w-5 h-5 text-[#ea0028]" />
                   <span>{editingProduct ? `Editing: "${editingProduct.name}"` : 'Add New Product Studio'}</span>
                 </h2>
-                <span className="text-[11px] text-emerald-300">Fill details & upload images to publish product to live store</span>
+                <span className="text-[11px] text-gray-400">Fill details & upload images to publish product to live store</span>
               </div>
             </div>
 
@@ -1921,14 +1950,14 @@ const Admin = () => {
               <button
                 type="button"
                 onClick={() => setIsAddProductOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-emerald-200 hover:text-white hover:bg-emerald-900 transition-colors"
+                className="px-4 py-2 rounded-none text-xs font-semibold text-gray-300 hover:text-white hover:bg-[#2a2a2a] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={(e) => handleSaveProduct(e)}
-                className="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold px-6 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-900/40 transition-all transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
+                className="bg-[#ea0028] hover:bg-[#cc0020] text-white font-bold px-6 py-2.5 rounded-none text-xs shadow-lg shadow-red-950/40 transition-all transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>{editingProduct ? 'Save & Update Product' : 'Publish Product to Website'}</span>
@@ -1944,13 +1973,13 @@ const Admin = () => {
               <div className="lg:col-span-5 space-y-6">
                 
                 {/* Media Card */}
-                <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+                <div className="bg-white rounded-none p-6 border border-slate-200/90 shadow-sm space-y-4">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <div>
-                      <h3 className="font-serif font-bold text-base text-slate-900">Product Media & Gallery</h3>
+                      <h3 className="font-bold text-base text-slate-900">Product Media & Gallery</h3>
                       <p className="text-[11px] text-slate-500">Upload 8+ high-res images for multi-angle view</p>
                     </div>
-                    <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full">
+                    <span className="text-xs font-bold text-[#ea0028] bg-red-50 border border-red-100 px-2.5 py-1 rounded-none">
                       {productForm.images?.length || (productForm.image ? 1 : 0)} Photos
                     </span>
                   </div>
@@ -1967,29 +1996,29 @@ const Admin = () => {
                   {/* Multi-Photo Big Dropzone Button */}
                   <div
                     onClick={() => !isUploadingPhotos && productFileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all flex flex-col items-center justify-center gap-3 group ${
+                    className={`border-2 border-dashed rounded-none p-6 text-center transition-all flex flex-col items-center justify-center gap-3 group ${
                       isUploadingPhotos
-                        ? 'border-emerald-500 bg-emerald-100/50 cursor-wait'
-                        : 'border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50 cursor-pointer'
+                        ? 'border-[#ea0028] bg-red-50/50 cursor-wait'
+                        : 'border-slate-300 hover:border-[#ea0028] bg-slate-50/50 hover:bg-red-50/20 cursor-pointer'
                     }`}
                   >
                     {isUploadingPhotos ? (
                       <>
-                        <div className="w-14 h-14 rounded-2xl bg-emerald-200 text-emerald-900 flex items-center justify-center shadow-xs">
-                          <Loader2 className="w-8 h-8 animate-spin text-emerald-800" />
+                        <div className="w-14 h-14 rounded-none bg-red-100 text-[#ea0028] flex items-center justify-center shadow-xs">
+                          <Loader2 className="w-8 h-8 animate-spin text-[#ea0028]" />
                         </div>
                         <div>
-                          <span className="font-bold text-emerald-950 text-sm block">Uploading Photos to Cloudinary...</span>
-                          <span className="text-[11px] text-emerald-700 font-medium">Processing high-res images, please wait...</span>
+                          <span className="font-bold text-slate-900 text-sm block">Uploading Photos to Cloudinary...</span>
+                          <span className="text-[11px] text-[#ea0028] font-medium">Processing high-res images, please wait...</span>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
+                        <div className="w-14 h-14 rounded-none bg-red-50 text-[#ea0028] flex items-center justify-center group-hover:scale-110 transition-transform shadow-xs">
                           <FolderOpen className="w-7 h-7" />
                         </div>
                         <div>
-                          <span className="font-bold text-emerald-950 text-sm block">Click to Browse & Upload Photos from PC</span>
+                          <span className="font-bold text-slate-900 text-sm block">Click to Browse & Upload Photos from PC</span>
                           <span className="text-[11px] text-slate-500">Select multiple images at once (Supports JPG, PNG, WEBP)</span>
                         </div>
                       </>
@@ -2014,7 +2043,7 @@ const Admin = () => {
                           addToast('Photo URL added to gallery', 'info');
                         }
                       }}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-none px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#ea0028]"
                     />
                   </div>
 
@@ -2030,13 +2059,13 @@ const Admin = () => {
                           return (
                             <div
                               key={idx}
-                              className={`relative aspect-square rounded-2xl overflow-hidden border-2 shadow-xs group ${
-                                isMain ? 'border-emerald-600 ring-2 ring-emerald-500/50' : 'border-slate-200 bg-slate-50'
+                              className={`relative aspect-square rounded-none overflow-hidden border-2 shadow-xs group ${
+                                isMain ? 'border-[#ea0028] ring-2 ring-red-500/40' : 'border-slate-200 bg-slate-50'
                               }`}
                             >
                               <img src={img} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                               {isMain && (
-                                <span className="absolute top-1 left-1 bg-emerald-800 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">
+                                <span className="absolute top-1 left-1 bg-[#ea0028] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-none shadow">
                                   ★ Main Cover
                                 </span>
                               )}
@@ -2045,7 +2074,7 @@ const Admin = () => {
                                   <button
                                     type="button"
                                     onClick={() => handleSetMainProductImage(img)}
-                                    className="bg-white text-emerald-950 text-[10px] font-bold px-2 py-1 rounded-md shadow"
+                                    className="bg-white text-slate-900 text-[10px] font-bold px-2 py-1 rounded-none shadow hover:bg-red-50 hover:text-[#ea0028]"
                                   >
                                     Set Cover
                                   </button>
@@ -2053,7 +2082,7 @@ const Admin = () => {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveProductImage(idx)}
-                                  className="bg-rose-600 text-white p-1 rounded-full hover:bg-rose-700"
+                                  className="bg-rose-600 text-white p-1 rounded-none hover:bg-rose-700 cursor-pointer"
                                   title="Remove photo"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -2065,10 +2094,10 @@ const Admin = () => {
                       </div>
                     </div>
                   ) : productForm.image && (
-                    <div className="mt-2 flex items-center gap-3 p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
-                      <img src={productForm.image} alt="Preview" className="w-14 h-14 rounded-xl object-cover border" />
+                    <div className="mt-2 flex items-center gap-3 p-3 bg-red-50 rounded-none border border-red-200">
+                      <img src={productForm.image} alt="Preview" className="w-14 h-14 rounded-none object-cover border" />
                       <div>
-                        <span className="font-bold text-emerald-950 text-xs block">Main Cover Loaded</span>
+                        <span className="font-bold text-slate-900 text-xs block">Main Cover Loaded</span>
                         <span className="text-[11px] text-slate-500">Ready for catalog</span>
                       </div>
                     </div>
@@ -2076,11 +2105,11 @@ const Admin = () => {
                 </div>
 
                 {/* Display & Stock Settings Box */}
-                <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
-                  <h3 className="font-serif font-bold text-base text-slate-900">Visibility & Display Badges</h3>
+                <div className="bg-white rounded-none p-6 border border-slate-200/90 shadow-sm space-y-4">
+                  <h3 className="font-bold text-base text-slate-900">Visibility & Display Badges</h3>
                   <div className="space-y-3">
 
-                    <label className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100/70 transition-colors">
+                    <label className="flex items-center justify-between p-3.5 rounded-none bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100/70 transition-colors">
                       <div>
                         <span className="font-bold text-slate-800 block text-xs">⭐ Best Seller Badge</span>
                         <span className="text-[11px] text-slate-500">Show under Best Seller filter</span>
@@ -2089,20 +2118,20 @@ const Admin = () => {
                         type="checkbox"
                         checked={productForm.isBestSeller}
                         onChange={(e) => setProductForm({ ...productForm, isBestSeller: e.target.checked })}
-                        className="accent-emerald-600 w-5 h-5 rounded"
+                        className="accent-[#ea0028] w-5 h-5 rounded-none cursor-pointer"
                       />
                     </label>
 
-                    <label className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 cursor-pointer hover:bg-emerald-100/70 transition-colors">
+                    <label className="flex items-center justify-between p-3.5 rounded-none bg-red-50/80 border border-red-200 cursor-pointer hover:bg-red-100/70 transition-colors">
                       <div>
-                        <span className="font-bold text-emerald-950 block text-xs">🌟 Mark as Featured</span>
-                        <span className="text-[11px] text-emerald-700">Display on Home Landing Page</span>
+                        <span className="font-bold text-slate-900 block text-xs">🌟 Mark as Featured</span>
+                        <span className="text-[11px] text-[#ea0028] font-medium">Display on Home Landing Page</span>
                       </div>
                       <input
                         type="checkbox"
                         checked={productForm.isFeatured}
                         onChange={(e) => setProductForm({ ...productForm, isFeatured: e.target.checked })}
-                        className="accent-emerald-600 w-5 h-5 rounded"
+                        className="accent-[#ea0028] w-5 h-5 rounded-none cursor-pointer"
                       />
                     </label>
                   </div>
@@ -2114,8 +2143,8 @@ const Admin = () => {
               <div className="lg:col-span-7 space-y-6">
                 
                 {/* Basic Information Card */}
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
-                  <h3 className="font-serif font-bold text-lg text-slate-900 pb-2 border-b border-slate-100">
+                <div className="bg-white rounded-none p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
+                  <h3 className="font-bold text-lg text-slate-900 pb-2 border-b border-slate-100">
                     Product Core Details
                   </h3>
 
@@ -2128,7 +2157,7 @@ const Admin = () => {
                         placeholder="e.g. Aravez 75-inch 4K Interactive Flat Panel Display"
                         value={productForm.name ?? ''}
                         onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-none px-4 py-3 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#ea0028]"
                       />
                     </div>
 
@@ -2137,15 +2166,15 @@ const Admin = () => {
                       <button
                         type="button"
                         onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                        className="w-full bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl px-4 py-3 text-xs sm:text-sm font-bold text-left flex items-center justify-between text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs cursor-pointer transition-colors"
+                        className="w-full bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-none px-4 py-3 text-xs sm:text-sm font-bold text-left flex items-center justify-between text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ea0028] shadow-xs cursor-pointer transition-colors"
                       >
                         <span>{productForm.category || 'Select Category'}</span>
-                        <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-emerald-700' : ''}`} />
+                        <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${isCategoryDropdownOpen ? 'rotate-180 text-[#ea0028]' : ''}`} />
                       </button>
 
                       {/* Custom Downward Opening Options Dropdown */}
                       {isCategoryDropdownOpen && (
-                        <div className="absolute top-full left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto divide-y divide-slate-100 animate-fade-in">
+                        <div className="absolute top-full left-0 right-0 z-50 mt-1.5 bg-white border border-slate-200 rounded-none shadow-2xl overflow-hidden max-h-64 overflow-y-auto divide-y divide-slate-100 animate-fade-in">
                           {PRODUCT_CATEGORIES.filter(c => c !== 'All Products').map((c) => (
                             <button
                               key={c}
@@ -2156,27 +2185,27 @@ const Admin = () => {
                               }}
                               className={`w-full text-left px-4 py-3 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
                                 productForm.category === c
-                                  ? 'bg-emerald-50 text-emerald-950 font-bold'
+                                  ? 'bg-red-50 text-[#ea0028] font-bold'
                                   : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                               }`}
                             >
                               <span>{c}</span>
-                              {productForm.category === c && <Check className="w-4 h-4 text-emerald-700 shrink-0" />}
+                              {productForm.category === c && <Check className="w-4 h-4 text-[#ea0028] shrink-0" />}
                             </button>
                           ))}
                         </div>
                       )}
 
                       {productForm.category === 'Other' && (
-                        <div className="mt-3 p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
-                          <label className="block font-bold text-emerald-900 mb-1 text-xs">Specify Custom Category Name *</label>
+                        <div className="mt-3 p-3 bg-red-50 rounded-none border border-red-200">
+                          <label className="block font-bold text-slate-900 mb-1 text-xs">Specify Custom Category Name *</label>
                           <input
                             type="text"
                             required
                             placeholder="e.g. Smart Teleprompters / Mounting Rigs"
                             value={productForm.customCategory ?? ''}
                             onChange={(e) => setProductForm({ ...productForm, customCategory: e.target.value })}
-                            className="w-full bg-white border border-emerald-300 rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full bg-white border border-red-300 rounded-none px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#ea0028]"
                           />
                         </div>
                       )}
@@ -2185,12 +2214,12 @@ const Admin = () => {
                 </div>
 
                 {/* Pricing & Discount Card */}
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-4">
-                  <h3 className="font-serif font-bold text-lg text-slate-900 pb-2 border-b border-slate-100">
+                <div className="bg-white rounded-none p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-4">
+                  <h3 className="font-bold text-lg text-slate-900 pb-2 border-b border-slate-100">
                     Pricing & Commercial Quotation (₹ INR)
                   </h3>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-emerald-50/50 p-4 sm:p-5 rounded-2xl border border-emerald-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 sm:p-5 rounded-none border border-slate-200">
                     <div>
                       <label className="block font-bold text-slate-700 mb-1">Original Price (₹) *</label>
                       <input
@@ -2200,7 +2229,7 @@ const Admin = () => {
                         placeholder="e.g. 150000"
                         value={productForm.price ?? ''}
                         onChange={(e) => handlePriceChange(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full bg-white border border-slate-200 rounded-none px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#ea0028]"
                       />
                     </div>
 
@@ -2213,7 +2242,7 @@ const Admin = () => {
                         placeholder="e.g. 15"
                         value={productForm.discountPercent ?? ''}
                         onChange={(e) => handleDiscountPercentChange(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full bg-white border border-slate-200 rounded-none px-3.5 py-2.5 font-bold text-[#ea0028] focus:outline-none focus:ring-2 focus:ring-[#ea0028]"
                       />
                     </div>
 
@@ -2225,15 +2254,15 @@ const Admin = () => {
                         placeholder="e.g. 127500"
                         value={productForm.discountPrice ?? ''}
                         onChange={(e) => handleDiscountPriceChange(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="w-full bg-white border border-slate-200 rounded-none px-3.5 py-2.5 font-bold text-[#ea0028] focus:outline-none focus:ring-2 focus:ring-[#ea0028]"
                       />
                     </div>
                   </div>
 
                   {productForm.price > 0 && (
-                    <div className="bg-emerald-950 text-white rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-md">
+                    <div className="bg-[#1d1d1d] text-white rounded-none p-4 flex flex-wrap items-center justify-between gap-3 shadow-md">
                       <div className="flex items-center gap-2 text-xs">
-                        <span className="bg-emerald-800 text-emerald-200 px-2.5 py-1 rounded-md font-bold uppercase tracking-wider">
+                        <span className="bg-[#ea0028] text-white px-2.5 py-1 rounded-none font-bold uppercase tracking-wider">
                           Summary
                         </span>
                         <span>MRP: <strong>₹{Number(productForm.price).toLocaleString('en-IN')}</strong></span>
@@ -2241,10 +2270,10 @@ const Admin = () => {
                           <span className="text-amber-300 font-extrabold">({productForm.discountPercent}% OFF)</span>
                         )}
                       </div>
-                      <div className="text-sm font-black text-emerald-300">
-                        Selling Price: ₹{Number(productForm.discountPrice || productForm.price).toLocaleString('en-IN')}
+                      <div className="text-sm font-black text-white">
+                        Selling Price: <span className="text-[#ea0028]">₹{Number(productForm.discountPrice || productForm.price).toLocaleString('en-IN')}</span>
                         {productForm.discountPrice && (
-                          <span className="text-xs text-emerald-200 font-normal ml-2">
+                          <span className="text-xs text-gray-300 font-normal ml-2">
                             (Savings: ₹{(Number(productForm.price) - Number(productForm.discountPrice)).toLocaleString('en-IN')})
                           </span>
                         )}
@@ -2254,35 +2283,35 @@ const Admin = () => {
                 </div>
 
                 {/* Features & Specifications Card */}
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
-                  <h3 className="font-serif font-bold text-lg text-slate-900 pb-2 border-b border-slate-100">
+                <div className="bg-white rounded-none p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-5">
+                  <h3 className="font-bold text-lg text-slate-900 pb-2 border-b border-slate-100">
                     Features & Technical Specifications
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="block font-bold text-slate-800 mb-1.5">
-                        Key Features <span className="text-[11px] font-normal text-slate-500">(1 per line or comma-separated)</span>
+                      <label className="block font-bold text-slate-800 mb-1.5 text-xs">
+                        Key Features
                       </label>
                       <textarea
-                        rows={4}
-                        placeholder="e.g.&#10;• 20-Point Multi-Touch Glass&#10;• Built-in 4K Camera & 8-Array Mic&#10;• Dual OS Android 11 & Windows 11&#10;• Anti-glare Toughened Glass"
+                        rows={6}
+                        placeholder="• 20-Point Multi-Touch Glass&#10;• Built-in 4K Camera & 8-Array Mic&#10;• Dual OS Android 11 & Windows 11&#10;• Anti-glare Toughened Glass"
                         value={productForm.features ?? ''}
                         onChange={(e) => setProductForm({ ...productForm, features: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y text-xs font-medium leading-relaxed"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-none px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ea0028] resize-y text-xs font-medium leading-relaxed min-h-[140px]"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-bold text-slate-800 mb-1.5">
-                        Technical Specifications <span className="text-[11px] font-normal text-slate-500">(Resolution, Power, Warranty etc.)</span>
+                      <label className="block font-bold text-slate-800 mb-1.5 text-xs">
+                        Technical Specifications
                       </label>
                       <textarea
-                        rows={4}
-                        placeholder="e.g.&#10;Screen Size: 75 inch 4K UHD&#10;Brightness: 450 cd/m²&#10;Touch Points: 20-Point IR Touch&#10;Warranty: 3 Years Onsite Warranty"
+                        rows={6}
+                        placeholder="Screen Size: 75 inch 4K UHD&#10;Brightness: 450 cd/m²&#10;Touch Points: 20-Point IR Touch&#10;Warranty: 3 Years Onsite Warranty"
                         value={productForm.specifications ?? ''}
                         onChange={(e) => setProductForm({ ...productForm, specifications: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y text-xs font-mono leading-relaxed"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-none px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ea0028] resize-y text-xs font-mono leading-relaxed min-h-[140px]"
                       />
                     </div>
                   </div>
@@ -2295,7 +2324,7 @@ const Admin = () => {
                       placeholder="Detailed commercial description, installation guidelines, compatibility and warranty info..."
                       value={productForm.description ?? ''}
                       onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y text-xs leading-relaxed"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-none px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#ea0028] resize-y text-xs leading-relaxed"
                     />
                   </div>
                 </div>
@@ -2305,13 +2334,13 @@ const Admin = () => {
                   <button
                     type="button"
                     onClick={() => setIsAddProductOpen(false)}
-                    className="px-6 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors"
+                    className="px-6 py-3 rounded-none border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold px-8 py-3 rounded-xl text-xs shadow-lg shadow-emerald-900/30 transition-transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
+                    className="bg-[#ea0028] hover:bg-[#cc0020] text-white font-extrabold px-8 py-3 rounded-none text-xs shadow-lg shadow-red-950/20 transition-transform hover:scale-102 active:scale-98 flex items-center gap-2 cursor-pointer"
                   >
                     <Check className="w-4 h-4" />
                     <span>{editingProduct ? 'Save & Update Product' : 'Publish Product to Catalog'}</span>

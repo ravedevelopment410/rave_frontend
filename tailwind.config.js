@@ -25,10 +25,19 @@ export default {
           mint: '#6ee7b7',
           gold: '#eab308',
         },
+        portronics: {
+          red: '#ea0028',
+          'red-hover': '#cc0020',
+          dark: '#1d1d1d',
+          black: '#121212',
+          gray: '#848386',
+          border: '#e5e7eb',
+          bg: '#f7f7f8',
+        },
       },
       fontFamily: {
-        sans: ['Arial', 'Helvetica', 'sans-serif'],
-        serif: ['Arial', 'Helvetica', 'sans-serif'],
+        sans: ['Montserrat', 'Arial', 'sans-serif'],
+        serif: ['Montserrat', 'Arial', 'sans-serif'],
       },
       boxShadow: {
         'glow': '0 10px 25px -5px rgba(5, 150, 105, 0.25), 0 8px 10px -6px rgba(5, 150, 105, 0.2)',
@@ -38,6 +47,7 @@ export default {
         'float': 'float 4s ease-in-out infinite',
         'fade-in': 'fadeIn 0.3s ease-out forwards',
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'marquee': 'marquee 32s linear infinite',
       },
       keyframes: {
         float: {
@@ -47,6 +57,10 @@ export default {
         fadeIn: {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        marquee: {
+          '0%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-50%)' },
         },
       },
     },

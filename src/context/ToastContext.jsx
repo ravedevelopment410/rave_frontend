@@ -29,17 +29,17 @@ export const ToastProvider = ({ children }) => {
         {toasts.map(toast => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl shadow-lg border backdrop-blur-md transition-all duration-300 animate-fade-in ${
+            className={`pointer-events-auto flex items-start gap-3 p-4 rounded-none shadow-2xl border backdrop-blur-md transition-all duration-300 animate-fade-in ${
               toast.type === 'success'
-                ? 'bg-emerald-950/90 text-emerald-100 border-emerald-700/60'
+                ? 'bg-[#1d1d1d]/95 text-white border-gray-800'
                 : toast.type === 'error'
-                ? 'bg-rose-950/90 text-rose-100 border-rose-700/60'
-                : 'bg-teal-950/90 text-teal-100 border-teal-700/60'
+                ? 'bg-rose-950/95 text-rose-100 border-rose-800'
+                : 'bg-[#1d1d1d]/95 text-white border-gray-800'
             }`}
           >
             {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />}
             {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />}
-            {toast.type === 'info' && <Info className="w-5 h-5 text-teal-400 shrink-0 mt-0.5" />}
+            {toast.type === 'info' && <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />}
             <div className="flex-1 text-sm font-medium leading-snug">{toast.message}</div>
             <button
               onClick={() => removeToast(toast.id)}

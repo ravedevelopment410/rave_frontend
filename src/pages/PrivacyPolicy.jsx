@@ -73,7 +73,7 @@ const PrivacyPolicy = () => {
       {/* Hero Header */}
       <section className="relative overflow-hidden bg-gradient-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white py-16 sm:py-24">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-4">
-          <span className="inline-block px-3.5 py-1.5 bg-emerald-800/80 border border-emerald-600/50 rounded-full text-xs font-semibold uppercase tracking-widest text-emerald-300">
+          <span className="inline-block px-3.5 py-1.5 bg-emerald-800/80 border border-emerald-600/50 rounded-none text-xs font-semibold uppercase tracking-widest text-emerald-300">
             RAVE SERVICES • LEGAL & TRANSPARENCY
           </span>
           <h1 className="font-serif text-3xl sm:text-5xl font-bold">
@@ -89,9 +89,9 @@ const PrivacyPolicy = () => {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10 space-y-8">
         
         {/* Highlight Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="bg-white rounded-none p-6 sm:p-8 shadow-xl border border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+            <div className="w-14 h-14 rounded-none bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-7 h-7" />
             </div>
             <div>
@@ -99,20 +99,20 @@ const PrivacyPolicy = () => {
               <p className="text-xs text-slate-500">Your privacy is fundamental to our commercial AV operations.</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200">
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 bg-emerald-50 px-4 py-2 rounded-none border border-emerald-200">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             <span>256-Bit SSL Encrypted</span>
           </div>
         </div>
 
         {/* Detailed Policy Sections */}
-        <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-slate-200/80 space-y-10">
+        <div className="bg-white rounded-none p-6 sm:p-10 shadow-sm border border-slate-200/80 space-y-10">
           {sections.map((sec) => {
             const Icon = sec.icon;
             return (
               <div key={sec.id} className="space-y-3 pb-8 border-b border-slate-100 last:border-0 last:pb-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                  <div className="w-8 h-8 rounded-none bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
                     <Icon className="w-4 h-4" />
                   </div>
                   <h2 className="font-serif text-xl font-bold text-slate-900">{sec.title}</h2>
@@ -125,7 +125,7 @@ const PrivacyPolicy = () => {
           })}
 
           {/* Contact Officer Block */}
-          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 space-y-3 pt-6">
+          <div className="bg-slate-50 rounded-none p-6 border border-slate-200 space-y-3 pt-6">
             <h3 className="font-serif font-bold text-base text-slate-900">Privacy & Data Inquiries</h3>
             <p className="text-xs text-slate-600">
               If you have any questions regarding your corporate data, GST invoice information, or privacy preferences, please contact our Compliance Officer:
@@ -133,7 +133,7 @@ const PrivacyPolicy = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-medium text-slate-700 pt-2">
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-emerald-700" />
-                <a href="mailto:vdhiman@yahoo.com" className="hover:underline">vdhiman@yahoo.com</a>
+                <a href="mailto:contact@aravez.store" className="hover:underline">contact@aravez.store</a>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-emerald-700" />

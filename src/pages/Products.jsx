@@ -81,8 +81,8 @@ const Products = () => {
   const [onlyWishlist, setOnlyWishlist] = useState(searchParams.get('filter') === 'wishlist');
   const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
 
-  // Pagination State (9 cards per page)
-  const ITEMS_PER_PAGE = 9;
+  // Pagination State (12 cards per page for balanced 4-col / 3-col grids)
+  const ITEMS_PER_PAGE = 12;
   const [currentPage, setCurrentPage] = useState(1);
   const productsGridRef = useRef(null);
 
@@ -231,18 +231,18 @@ const Products = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-6">
       
       {/* Top Categories Scrollable Bar */}
-      <div className="bg-white rounded-3xl p-5 border border-emerald-100/90 shadow-sm space-y-3">
+      <div className="bg-white rounded-none border border-gray-200 shadow-xs space-y-3 p-5">
         <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-none bg-[#1d1d1d] text-white flex items-center justify-center font-bold">
               <Layers className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-serif text-lg font-bold text-slate-900 leading-tight">Categories</h2>
-              <span className="text-[10px] text-emerald-700 font-semibold tracking-wide uppercase">Select category to filter</span>
+              <h2 className="text-lg font-bold text-gray-900 leading-tight">Categories</h2>
+              <span className="text-[10px] text-[#ea0028] font-bold tracking-wide uppercase">Select category to filter</span>
             </div>
           </div>
-          <span className="text-[11px] text-slate-400 font-medium hidden sm:inline-block">Scroll horizontally →</span>
+          <span className="text-[11px] text-gray-400 font-medium hidden sm:inline-block">Scroll horizontally →</span>
         </div>
 
         {/* Scrollable Pills List */}
@@ -260,15 +260,15 @@ const Products = () => {
                   setSelectedCategory(cat);
                   setOnlyWishlist(false);
                 }}
-                className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all shadow-xs cursor-pointer flex items-center gap-1.5 ${
+                className={`px-4 py-2 rounded-none text-xs font-bold whitespace-nowrap transition-all shadow-xs cursor-pointer flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-emerald-800 text-white shadow-md shadow-emerald-950/20 scale-102 ring-2 ring-emerald-500/30'
-                    : 'bg-slate-50 hover:bg-emerald-50 hover:text-emerald-900 text-slate-700 border border-slate-200/80'
+                    ? 'bg-[#1d1d1d] text-white shadow-md'
+                    : 'bg-gray-50 hover:bg-red-50 hover:text-[#ea0028] text-gray-700 border border-gray-200'
                 }`}
               >
                 <span>{cat}</span>
                 {count > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${isSelected ? 'bg-emerald-950/60 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-none font-extrabold ${isSelected ? 'bg-[#ea0028] text-white' : 'bg-gray-200 text-gray-700'}`}>
                     {count}
                   </span>
                 )}
@@ -279,7 +279,7 @@ const Products = () => {
       </div>
 
       {/* Filter and Control Bar */}
-      <div className="bg-white rounded-3xl p-6 border border-emerald-100/90 shadow-sm space-y-4">
+      <div className="bg-white rounded-none p-6 border border-gray-200 shadow-xs space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
           
           {/* Search Input */}
@@ -289,9 +289,9 @@ const Products = () => {
               placeholder="Search products by title or keywords..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-emerald-50/40 border border-emerald-200 rounded-2xl py-2.5 pl-10 pr-4 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-none py-2.5 pl-10 pr-4 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#ea0028] text-gray-800"
             />
-            <Search className="w-4 h-4 text-emerald-600 absolute left-3.5 top-3.5" />
+            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
           </div>
 
           {/* Category Downward Dropdown */}
@@ -301,10 +301,10 @@ const Products = () => {
               <button
                 type="button"
                 onClick={() => setIsCatDropdownOpen(!isCatDropdownOpen)}
-                className="w-full bg-emerald-50/40 hover:bg-emerald-100/50 border border-emerald-200 rounded-2xl py-2.5 px-3.5 text-xs sm:text-sm text-slate-800 font-bold flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs cursor-pointer transition-colors"
+                className="w-full bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-none py-2.5 px-3.5 text-xs sm:text-sm text-gray-800 font-bold flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-[#ea0028] shadow-xs cursor-pointer transition-colors"
               >
                 <span className="truncate">{selectedCategory === 'All' ? 'All Products' : selectedCategory}</span>
-                <ChevronDown className={`w-4 h-4 text-emerald-700 transition-transform ${isCatDropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isCatDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
               {/* Downward opening menu */}
@@ -314,7 +314,7 @@ const Products = () => {
                     className="fixed inset-0 z-40"
                     onClick={() => setIsCatDropdownOpen(false)}
                   />
-                  <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white border border-emerald-200 rounded-2xl shadow-xl max-h-64 overflow-y-auto py-1.5 animate-fade-in divide-y divide-slate-100">
+                  <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white border border-gray-200 rounded-none shadow-xl max-h-64 overflow-y-auto py-1.5 animate-fade-in divide-y divide-gray-100">
                     {categories.map((c) => {
                       const isSelected = selectedCategory === c || (c === 'All Products' && (selectedCategory === 'All' || selectedCategory === 'All Products'));
                       return (
@@ -328,12 +328,12 @@ const Products = () => {
                           }}
                           className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
                             isSelected
-                              ? 'bg-emerald-800 text-white font-bold'
-                              : 'text-slate-700 hover:bg-emerald-50 hover:text-emerald-900'
+                              ? 'bg-[#1d1d1d] text-white font-bold'
+                              : 'text-gray-700 hover:bg-red-50 hover:text-[#ea0028]'
                           }`}
                         >
                           <span>{c}</span>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-300" />}
+                          {isSelected && <Check className="w-3.5 h-3.5 text-[#ea0028]" />}
                         </button>
                       );
                     })}
@@ -348,9 +348,9 @@ const Products = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full bg-emerald-50/40 border border-emerald-200 rounded-2xl py-2.5 px-3 text-xs sm:text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full bg-gray-50 border border-gray-200 rounded-none py-2.5 px-3 text-xs sm:text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#ea0028]"
             >
-              <option value="newest">★ Newest Uploads (First)</option>
+              <option value="newest">★ Newest Uploads</option>
               <option value="popular">Most Popular</option>
               <option value="rating">Highest Rated</option>
               <option value="price-low">Price: Low to High</option>
@@ -363,7 +363,7 @@ const Products = () => {
             <div className="flex-1">
               <div className="flex justify-between text-xs text-gray-600 mb-1">
                 <span>Max Price:</span>
-                <strong className="text-emerald-900 font-bold">
+                <strong className="text-[#1d1d1d] font-bold">
                   {maxPrice >= 500000 ? 'Any Price' : `₹${maxPrice.toLocaleString('en-IN')}`}
                 </strong>
               </div>
@@ -374,7 +374,7 @@ const Products = () => {
                 step="2500"
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
-                className="w-full accent-emerald-600 cursor-pointer h-1.5 bg-gray-200 rounded-lg"
+                className="w-full accent-[#ea0028] cursor-pointer h-1.5 bg-gray-200 rounded-none"
               />
             </div>
 
@@ -382,20 +382,20 @@ const Products = () => {
             <button
               onClick={() => setOnlyWishlist(!onlyWishlist)}
               title="Filter Wishlist"
-              className={`p-2.5 rounded-2xl border transition-colors ${
+              className={`p-2.5 rounded-none border transition-colors ${
                 onlyWishlist
-                  ? 'bg-rose-50 border-rose-300 text-rose-600'
+                  ? 'bg-red-50 border-red-200 text-[#ea0028]'
                   : 'border-gray-200 text-gray-500 hover:bg-gray-50'
               }`}
             >
-              <Heart className={`w-4 h-4 ${onlyWishlist ? 'fill-rose-500 text-rose-500' : ''}`} />
+              <Heart className={`w-4 h-4 ${onlyWishlist ? 'fill-[#ea0028] text-[#ea0028]' : ''}`} />
             </button>
 
             {/* Reset */}
             <button
               onClick={handleResetFilters}
               title="Reset All Filters"
-              className="p-2.5 rounded-2xl border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors"
+              className="p-2.5 rounded-none border border-gray-200 hover:bg-gray-100 text-gray-500 transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -407,23 +407,23 @@ const Products = () => {
       {/* Products Grid & Pagination Section */}
       <div ref={productsGridRef} className="scroll-mt-24">
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-              <div key={n} className="h-96 rounded-3xl bg-gray-100 animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+              <div key={n} className="h-72 rounded-none bg-gray-100 animate-pulse" />
             ))}
           </div>
         ) : displayedProducts.length === 0 ? (
-          <div className="bg-white rounded-3xl p-12 text-center border border-emerald-100 shadow-sm max-w-lg mx-auto space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+          <div className="bg-white rounded-none p-12 text-center border border-gray-200 shadow-xs max-w-lg mx-auto space-y-4">
+            <div className="w-16 h-16 rounded-none bg-red-50 text-[#ea0028] flex items-center justify-center mx-auto">
               <Search className="w-8 h-8" />
             </div>
-            <h3 className="font-serif text-xl font-bold text-gray-900">No products found</h3>
+            <h3 className="text-xl font-bold text-gray-900">No products found</h3>
             <p className="text-xs text-gray-500 leading-relaxed">
               We couldn't find any products matching your current search or filter combination.
             </p>
             <button
               onClick={handleResetFilters}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-6 py-2.5 rounded-full transition-colors cursor-pointer"
+              className="bg-[#1d1d1d] hover:bg-[#ea0028] text-white text-xs font-bold px-6 py-2.5 rounded-none transition-colors cursor-pointer"
             >
               Clear All Filters
             </button>
@@ -432,15 +432,15 @@ const Products = () => {
           <div className="space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-gray-500 gap-2">
               <span>
-                Showing <strong className="text-emerald-950 font-bold">{startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, displayedProducts.length)}</strong> of <strong className="text-emerald-950 font-bold">{displayedProducts.length}</strong> products
+                Showing <strong className="text-gray-900 font-bold">{startIndex + 1} - {Math.min(startIndex + ITEMS_PER_PAGE, displayedProducts.length)}</strong> of <strong className="text-gray-900 font-bold">{displayedProducts.length}</strong> products
               </span>
               {onlyWishlist && (
-                <span className="text-rose-600 font-semibold">Viewing Saved Wishlist items</span>
+                <span className="text-[#ea0028] font-semibold">Viewing Saved Wishlist items</span>
               )}
             </div>
 
-            {/* Exactly 9 Products Per Page (3x3 Grid) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {/* Exactly 12 Products Per Page (4x3 Grid on XL screens) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
               {paginatedProducts.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))}
@@ -448,9 +448,9 @@ const Products = () => {
 
             {/* Numbered Pagination Controls */}
             {totalPages > 1 && (
-              <div className="bg-white rounded-3xl p-4 sm:p-6 border border-emerald-100/90 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
-                <span className="text-xs text-slate-500 font-medium order-2 sm:order-1">
-                  Page <strong className="text-emerald-900 font-bold">{validCurrentPage}</strong> of <strong className="text-emerald-900 font-bold">{totalPages}</strong>
+              <div className="bg-white rounded-none p-4 sm:p-6 border border-gray-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
+                <span className="text-xs text-gray-500 font-medium order-2 sm:order-1">
+                  Page <strong className="text-gray-900 font-bold">{validCurrentPage}</strong> of <strong className="text-gray-900 font-bold">{totalPages}</strong>
                 </span>
 
                 <div className="flex items-center gap-1.5 order-1 sm:order-2 flex-wrap justify-center">
@@ -459,7 +459,7 @@ const Products = () => {
                     type="button"
                     onClick={() => handlePageChange(1)}
                     disabled={validCurrentPage === 1}
-                    className="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                    className="p-2 sm:p-2.5 rounded-none border border-gray-200 text-gray-700 hover:bg-red-50 hover:text-[#ea0028] hover:border-red-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
                     title="First Page"
                   >
                     <ChevronsLeft className="w-4 h-4" />
@@ -470,7 +470,7 @@ const Products = () => {
                     type="button"
                     onClick={() => handlePageChange(validCurrentPage - 1)}
                     disabled={validCurrentPage === 1}
-                    className="px-3 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-2 sm:py-2.5 rounded-none border border-gray-200 text-gray-700 hover:bg-red-50 hover:text-[#ea0028] hover:border-red-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span className="hidden sm:inline">Prev</span>
@@ -480,7 +480,7 @@ const Products = () => {
                   {getPageNumbers().map((num, idx) => {
                     if (num === '...') {
                       return (
-                        <span key={`ellipsis-${idx}`} className="px-2 py-1 text-slate-400 font-bold text-xs">
+                        <span key={`ellipsis-${idx}`} className="px-2 py-1 text-gray-400 font-bold text-xs">
                           ...
                         </span>
                       );
@@ -491,10 +491,10 @@ const Products = () => {
                         key={num}
                         type="button"
                         onClick={() => handlePageChange(num)}
-                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-none text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
                           isActive
-                            ? 'bg-emerald-800 text-white shadow-md shadow-emerald-950/20 scale-105 ring-2 ring-emerald-500/30'
-                            : 'border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 bg-white'
+                            ? 'bg-[#ea0028] text-white shadow-sm'
+                            : 'border border-gray-200 text-gray-700 hover:bg-red-50 hover:text-[#ea0028] hover:border-red-200 bg-white'
                         }`}
                       >
                         {num}
@@ -507,7 +507,7 @@ const Products = () => {
                     type="button"
                     onClick={() => handlePageChange(validCurrentPage + 1)}
                     disabled={validCurrentPage === totalPages}
-                    className="px-3 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-2 sm:py-2.5 rounded-none border border-gray-200 text-gray-700 hover:bg-red-50 hover:text-[#ea0028] hover:border-red-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <span className="hidden sm:inline">Next</span>
                     <ChevronRight className="w-4 h-4" />
@@ -518,7 +518,7 @@ const Products = () => {
                     type="button"
                     onClick={() => handlePageChange(totalPages)}
                     disabled={validCurrentPage === totalPages}
-                    className="p-2 sm:p-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
+                    className="p-2 sm:p-2.5 rounded-none border border-gray-200 text-gray-700 hover:bg-red-50 hover:text-[#ea0028] hover:border-red-200 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-all cursor-pointer"
                     title="Last Page"
                   >
                     <ChevronsRight className="w-4 h-4" />

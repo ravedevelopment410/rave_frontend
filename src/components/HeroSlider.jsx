@@ -46,7 +46,7 @@ const HeroSlider = () => {
 
   if (loading) {
     return (
-      <div className="w-full h-[40vh] sm:h-[60vh] bg-emerald-950 animate-pulse flex items-center justify-center text-emerald-300">
+      <div className="w-full h-[40vh] sm:h-[60vh] bg-[#1d1d1d] animate-pulse flex items-center justify-center text-[#ea0028]">
         <Sparkles className="w-8 h-8 animate-spin" />
       </div>
     );
@@ -83,7 +83,7 @@ const HeroSlider = () => {
         <>
           <button
             onClick={handlePrev}
-            className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-slate-950/50 hover:bg-slate-950/80 text-white flex items-center justify-center backdrop-blur-md shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110 cursor-pointer"
+            className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-none bg-slate-950/60 hover:bg-[#ea0028] text-white flex items-center justify-center backdrop-blur-md shadow-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
             aria-label="Previous banner"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -91,7 +91,7 @@ const HeroSlider = () => {
 
           <button
             onClick={handleNext}
-            className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-slate-950/50 hover:bg-slate-950/80 text-white flex items-center justify-center backdrop-blur-md shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110 cursor-pointer"
+            className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-none bg-slate-950/60 hover:bg-[#ea0028] text-white flex items-center justify-center backdrop-blur-md shadow-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
             aria-label="Next banner"
           >
             <ChevronRight className="w-6 h-6" />
@@ -99,17 +99,17 @@ const HeroSlider = () => {
         </>
       )}
 
-      {/* Pagination Dots */}
+      {/* Pagination Indicators */}
       {sliders.length > 1 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2">
           {sliders.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setCurrentIndex(idx)}
-              className={`transition-all duration-300 rounded-full cursor-pointer ${
+              className={`transition-all duration-300 rounded-none cursor-pointer ${
                 currentIndex === idx
-                  ? 'w-8 h-2.5 bg-white shadow-md'
-                  : 'w-2.5 h-2.5 bg-white/50 hover:bg-white/80'
+                  ? 'w-8 h-2 bg-[#ea0028] shadow-md'
+                  : 'w-3 h-2 bg-white/60 hover:bg-white'
               }`}
               aria-label={`Go to banner slide ${idx + 1}`}
             />

@@ -1,95 +1,37 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, Send, Instagram, Facebook, Twitter, ShieldCheck, Heart } from 'lucide-react';
-import { api } from '../services/api';
-import { useToast } from '../context/ToastContext';
+import { Mail, Phone, MapPin, Instagram, Facebook, Twitter, ShieldCheck } from 'lucide-react';
 
 const Footer = () => {
-  const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { addToast } = useToast();
-
-  const handleSubscribe = async (e) => {
-    e.preventDefault();
-    if (!email) return;
-
-    setLoading(true);
-    try {
-      const res = await api.subscribeNewsletter(email);
-      addToast(res.message || 'Subscribed successfully! Check your email for special welcome gifts.', 'success');
-      setEmail('');
-    } catch (err) {
-      addToast(err.message || 'Subscription failed. Please try again.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <footer className="bg-gradient-to-b from-emerald-950 via-emerald-950 to-[#02180e] text-emerald-100 pt-16 pb-8 border-t border-emerald-900">
+    <footer className="bg-[#1d1d1d] text-white pt-16 pb-8 border-t border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Top Newsletter Card */}
-        <div className="bg-emerald-900/60 border border-emerald-800 rounded-3xl p-8 sm:p-10 mb-16 backdrop-blur-md relative overflow-hidden">
-          <div className="absolute -right-10 -bottom-10 w-64 h-64 rounded-full bg-emerald-700/20 blur-3xl pointer-events-none" />
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-            <div className="lg:col-span-6">
-              <span className="inline-block px-3 py-1 bg-emerald-800 text-emerald-300 rounded-full text-xs font-semibold uppercase tracking-wider mb-3">
-                🖥️ Join Aravez Tech Network
-              </span>
-              <h3 className="font-serif text-2xl sm:text-3xl text-white font-bold leading-snug">
-                Stay updated with commercial AV innovations & B2B solutions.
-              </h3>
-              <p className="text-emerald-200/80 text-sm mt-2">
-                Subscribe to receive technical specifications, B2B price lists, and new product launch announcements.
-              </p>
-            </div>
-            <div className="lg:col-span-6">
-              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="email"
-                  placeholder="Enter your corporate email..."
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="flex-1 bg-emerald-950/80 border border-emerald-700/70 rounded-full px-5 py-3.5 text-sm text-white placeholder-emerald-400/60 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent"
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-bold px-7 py-3.5 rounded-full transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 hover:scale-[1.02] disabled:opacity-50"
-                >
-                  <span>{loading ? 'Subscribing...' : 'Subscribe'}</span>
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
-              <span className="text-[11px] text-emerald-400/70 mt-2 block pl-2">
-                We respect your privacy. Unsubscribe anytime with 1-click.
-              </span>
-            </div>
-          </div>
-        </div>
-
         {/* Main Footer Links */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-emerald-900/60">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-gray-800">
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
-            <Link to="/" className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-emerald-950 flex items-center justify-center font-bold text-xl shadow-md">
-                🖥️
-              </div>
-              <span className="font-serif text-2xl font-bold text-white tracking-tight">Aravez</span>
+            <Link to="/" aria-label="AraveZ" className="flex items-baseline group select-none py-1 font-mont">
+              <span className="text-4xl sm:text-5xl font-black text-white group-hover:text-[#ea0028] transition-colors font-mont tracking-wide">
+                Λ
+              </span>
+              <span className="text-base sm:text-lg font-bold text-[#ea0028] group-hover:text-white transition-colors font-mont tracking-[0.08em] mx-1 pl-0.5">
+                rave
+              </span>
+              <span className="text-4xl sm:text-5xl font-black text-white group-hover:text-[#ea0028] transition-colors font-mont tracking-wide">
+                Z
+              </span>
             </Link>
-            <p className="text-emerald-200/80 text-sm leading-relaxed max-w-sm">
-              Aravez is a premier provider of commercial audio-visual solutions, Touchbooks, Interactive Panels, Active LEDs, Home Theater systems, and Video Conferencing equipment.
+            <p className="text-white text-sm leading-relaxed max-w-sm">
+              Aravez is a premier provider of commercial audio-visual solutions, Toughbook, Interactive Panels, Active LEDs, Home Theater systems, and Video Conferencing equipment.
             </p>
             <div className="flex items-center gap-3 pt-2">
-              <a href="#" className="w-9 h-9 rounded-full bg-emerald-900/80 hover:bg-emerald-600 text-emerald-200 hover:text-white flex items-center justify-center transition-colors">
+              <a href="#" className="w-9 h-9 rounded-none bg-[#2a2a2a] hover:bg-[#ea0028] text-white hover:text-white flex items-center justify-center transition-colors">
                 <Instagram className="w-4 h-4" />
               </a>
-              <a href="#" className="w-9 h-9 rounded-full bg-emerald-900/80 hover:bg-emerald-600 text-emerald-200 hover:text-white flex items-center justify-center transition-colors">
+              <a href="#" className="w-9 h-9 rounded-none bg-[#2a2a2a] hover:bg-[#ea0028] text-white hover:text-white flex items-center justify-center transition-colors">
                 <Facebook className="w-4 h-4" />
               </a>
-              <a href="#" className="w-9 h-9 rounded-full bg-emerald-900/80 hover:bg-emerald-600 text-emerald-200 hover:text-white flex items-center justify-center transition-colors">
+              <a href="#" className="w-9 h-9 rounded-none bg-[#2a2a2a] hover:bg-[#ea0028] text-white hover:text-white flex items-center justify-center transition-colors">
                 <Twitter className="w-4 h-4" />
               </a>
             </div>
@@ -97,53 +39,52 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-semibold text-white text-base mb-4 tracking-wider uppercase text-xs">Explore</h4>
-            <ul className="space-y-2.5 text-sm text-emerald-200/80">
-              <li><Link to="/" className="hover:text-white hover:underline transition-colors">Home</Link></li>
-              <li><Link to="/about" className="hover:text-white hover:underline transition-colors">About Aravez</Link></li>
-              <li><Link to="/products" className="hover:text-white hover:underline transition-colors">All AV Products</Link></li>
-              <li><Link to="/contact" className="hover:text-white hover:underline transition-colors">Contact Support & Quotes</Link></li>
+            <h4 className="font-bold text-white text-xs mb-4 tracking-wider uppercase">Explore</h4>
+            <ul className="space-y-2.5 text-sm text-white">
+              <li><Link to="/" className="text-white hover:text-[#ea0028] transition-colors">Home</Link></li>
+              <li><Link to="/about" className="text-white hover:text-[#ea0028] transition-colors">About Aravez</Link></li>
+              <li><Link to="/products" className="text-white hover:text-[#ea0028] transition-colors">All AV Products</Link></li>
+              <li><Link to="/contact" className="text-white hover:text-[#ea0028] transition-colors">Contact Support & Quotes</Link></li>
             </ul>
           </div>
 
           {/* Top AV Categories */}
           <div>
-            <h4 className="font-semibold text-white text-base mb-4 tracking-wider uppercase text-xs">Top Categories</h4>
-            <ul className="space-y-2.5 text-sm text-emerald-200/80">
-              <li><Link to="/products?category=Touchbooks" className="hover:text-white transition-colors">Touchbooks</Link></li>
-              <li><Link to="/products?category=Projecters" className="hover:text-white transition-colors">Projectors</Link></li>
-              <li><Link to="/products?category=Interactive+Panels" className="hover:text-white transition-colors">Interactive Panels</Link></li>
-              <li><Link to="/products?category=Active+LED" className="hover:text-white transition-colors">Active LED</Link></li>
-              <li><Link to="/products?category=Video+Conferencing+Equipments" className="hover:text-white transition-colors">VC Equipments</Link></li>
+            <h4 className="font-bold text-white text-xs mb-4 tracking-wider uppercase">Top Categories</h4>
+            <ul className="space-y-2.5 text-sm text-white">
+              <li><Link to="/products?category=Toughbook" className="text-white hover:text-[#ea0028] transition-colors">Toughbook</Link></li>
+              <li><Link to="/products?category=Projectors" className="text-white hover:text-[#ea0028] transition-colors">Projectors</Link></li>
+              <li><Link to="/products?category=Interactive+Panels" className="text-white hover:text-[#ea0028] transition-colors">Interactive Panels</Link></li>
+              <li><Link to="/products?category=Active+LED" className="text-white hover:text-[#ea0028] transition-colors">Active LED</Link></li>
+              <li><Link to="/products?category=Video+Conferencing+Equipments" className="text-white hover:text-[#ea0028] transition-colors">VC Equipments</Link></li>
             </ul>
           </div>
 
           {/* Contact Support */}
           <div>
-            <h4 className="font-semibold text-white text-base mb-4 tracking-wider uppercase text-xs">Aravez Care</h4>
-            <ul className="space-y-3 text-sm text-emerald-200/80">
+            <h4 className="font-bold text-white text-xs mb-4 tracking-wider uppercase">Aravez Care</h4>
+            <ul className="space-y-3 text-sm text-white">
               <li className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span className="leading-snug">SCO-2, 2nd Floor, Sector-17E, Chandigarh - 160017</span>
+                <MapPin className="w-4 h-4 text-[#ea0028] shrink-0 mt-0.5" />
+                <span className="leading-snug text-white">SCO-2, 2nd Floor, Sector-17E, Chandigarh - 160017</span>
               </li>
               <li className="flex items-start gap-2.5">
-                <Phone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-0.5">
-                  <a href="tel:+919814903739" className="hover:text-white transition-colors">+91 9814903739</a>
-                  <a href="tel:+911724416646" className="hover:text-white transition-colors">+91 172 4416646</a>
+                <Phone className="w-4 h-4 text-[#ea0028] shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-0.5 text-white">
+                  <a href="tel:+919814903739" className="text-white hover:text-[#ea0028] transition-colors">+91 9814903739</a>
+                  <a href="tel:+911724416646" className="text-white hover:text-[#ea0028] transition-colors">+91 172 4416646</a>
                 </div>
               </li>
               <li className="flex items-start gap-2.5">
-                <Mail className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-0.5">
-                  <a href="mailto:vdhiman@yahoo.com" className="hover:text-white transition-colors">vdhiman@yahoo.com</a>
-                  <a href="mailto:ravechd@yahoo.com" className="hover:text-white transition-colors">ravechd@yahoo.com</a>
+                <Mail className="w-4 h-4 text-[#ea0028] shrink-0 mt-0.5" />
+                <div className="flex flex-col gap-0.5 text-white">
+                  <a href="mailto:contact@aravez.store" className="text-white hover:text-[#ea0028] transition-colors">contact@aravez.store</a>
                 </div>
               </li>
               <li className="pt-2">
-                <div className="flex items-center gap-1.5 text-xs text-emerald-300 font-medium bg-emerald-900/50 py-1.5 px-3 rounded-lg border border-emerald-800">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>100% Secure SSL Checkout</span>
+                <div className="flex items-center gap-1.5 text-xs text-white font-medium bg-[#2a2a2a] py-1.5 px-3 rounded-none border border-[#3a3a3a]">
+                  <ShieldCheck className="w-4 h-4 text-[#ea0028]" />
+                  <span className="text-white">100% Secure SSL Checkout</span>
                 </div>
               </li>
             </ul>
@@ -152,10 +93,10 @@ const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-emerald-400/80">
+        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
           <p>© {new Date().getFullYear()} Aravez (Rave Services). All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <Link to="/admin" className="text-emerald-300 font-bold hover:text-white flex items-center gap-1">
+            <Link to="/admin" className="text-[#ea0028] font-bold hover:text-white flex items-center gap-1">
               <span>🔐 Admin Panel</span>
             </Link>
             <span>•</span>

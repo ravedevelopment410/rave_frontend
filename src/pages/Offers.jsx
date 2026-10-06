@@ -76,7 +76,7 @@ const Offers = () => {
       {/* 1. HERO BANNER WITH COUNTDOWN */}
       <section className="relative overflow-hidden bg-gradient-to-r from-emerald-950 via-teal-900 to-emerald-900 text-white py-16 sm:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400 text-amber-950 font-bold text-xs uppercase tracking-wider shadow-md">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-none bg-amber-400 text-amber-950 font-bold text-xs uppercase tracking-wider shadow-md">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Limited Botanical Flash Deals</span>
           </div>
@@ -100,7 +100,7 @@ const Offers = () => {
               { val: timeLeft.minutes, label: 'MIN' },
               { val: timeLeft.seconds, label: 'SEC' },
             ].map((t, idx) => (
-              <div key={idx} className="bg-emerald-900/90 border border-emerald-600/50 rounded-2xl px-3.5 py-2 min-w-[54px]">
+              <div key={idx} className="bg-emerald-900/90 border border-emerald-600/50 rounded-none px-3.5 py-2 min-w-[54px]">
                 <div className="font-mono text-lg sm:text-xl font-extrabold text-amber-300">
                   {String(t.val).padStart(2, '0')}
                 </div>
@@ -129,11 +129,11 @@ const Offers = () => {
           {offers.map((offer) => (
             <div
               key={offer._id}
-              className="bg-white rounded-3xl border-2 border-dashed border-emerald-200 p-6 sm:p-8 hover:border-emerald-500 transition-all shadow-sm hover:shadow-xl flex flex-col justify-between relative overflow-hidden group"
+              className="bg-white rounded-none border-2 border-dashed border-emerald-200 p-6 sm:p-8 hover:border-emerald-500 transition-all shadow-sm hover:shadow-xl flex flex-col justify-between relative overflow-hidden group"
             >
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-full uppercase tracking-wider mb-2">
+                  <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-extrabold rounded-none uppercase tracking-wider mb-2">
                     {offer.badge}
                   </span>
                   <h3 className="font-serif text-2xl font-bold text-gray-900 leading-tight">
@@ -143,7 +143,7 @@ const Offers = () => {
                     {offer.subtitle}
                   </p>
                 </div>
-                <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-800 flex flex-col items-center justify-center shrink-0 border border-emerald-100">
+                <div className="w-14 h-14 rounded-none bg-emerald-50 text-emerald-800 flex flex-col items-center justify-center shrink-0 border border-emerald-100">
                   <Percent className="w-4 h-4 text-emerald-600" />
                   <span className="font-black text-sm">{offer.discountPercent}%</span>
                 </div>
@@ -155,7 +155,7 @@ const Offers = () => {
 
               {/* Coupon Box Action */}
               <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="w-full sm:w-auto bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2 flex items-center justify-between sm:justify-start gap-3">
+                <div className="w-full sm:w-auto bg-emerald-50 border border-emerald-200 rounded-none px-4 py-2 flex items-center justify-between sm:justify-start gap-3">
                   <Tag className="w-4 h-4 text-emerald-600" />
                   <span className="font-mono text-base font-bold text-emerald-900 tracking-wider">
                     {offer.couponCode}
@@ -164,7 +164,7 @@ const Offers = () => {
 
                 <button
                   onClick={() => handleCopyAndApply(offer.couponCode)}
-                  className={`w-full sm:w-auto px-6 py-2.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md ${
+                  className={`w-full sm:w-auto px-6 py-2.5 rounded-none font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md ${
                     copiedCode === offer.couponCode
                       ? 'bg-emerald-800 text-white'
                       : 'bg-emerald-700 hover:bg-emerald-800 text-white hover:scale-105'
@@ -207,7 +207,7 @@ const Offers = () => {
             {bundles.map((bundle, idx) => (
               <div
                 key={idx}
-                className="bg-white rounded-3xl overflow-hidden border border-emerald-100 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between"
+                className="bg-white rounded-none overflow-hidden border border-emerald-100 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between"
               >
                 <div className="relative aspect-video">
                   <img
@@ -215,10 +215,10 @@ const Offers = () => {
                     alt={bundle.title}
                     className="w-full h-full object-cover"
                   />
-                  <span className="absolute top-3 left-3 bg-amber-500 text-amber-950 text-[10px] font-extrabold px-3 py-1 rounded-full shadow-md">
+                  <span className="absolute top-3 left-3 bg-amber-500 text-amber-950 text-[10px] font-extrabold px-3 py-1 rounded-none shadow-md">
                     {bundle.badge}
                   </span>
-                  <span className="absolute top-3 right-3 bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md">
+                  <span className="absolute top-3 right-3 bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-none shadow-md">
                     SAVE {bundle.savePercent}%
                   </span>
                 </div>
@@ -246,7 +246,7 @@ const Offers = () => {
                     </div>
                     <Link
                       to="/products"
-                      className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-5 py-2.5 rounded-full transition-colors flex items-center gap-1.5"
+                      className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-5 py-2.5 rounded-none transition-colors flex items-center gap-1.5"
                     >
                       <span>Explore</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -261,13 +261,13 @@ const Offers = () => {
 
       {/* 4. HOW TO REDEEM */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-3xl p-8 sm:p-12 border border-emerald-100 shadow-sm text-center">
+        <div className="bg-white rounded-none p-8 sm:p-12 border border-emerald-100 shadow-sm text-center">
           <h3 className="font-serif text-2xl font-bold text-gray-900 mb-8">
             How to Redeem Your Offers
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="space-y-2">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-lg flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-none bg-emerald-100 text-emerald-800 font-extrabold text-lg flex items-center justify-center mx-auto">
                 1
               </div>
               <h4 className="font-bold text-base text-gray-900">Copy Coupon</h4>
@@ -276,7 +276,7 @@ const Offers = () => {
               </p>
             </div>
             <div className="space-y-2">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-lg flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-none bg-emerald-100 text-emerald-800 font-extrabold text-lg flex items-center justify-center mx-auto">
                 2
               </div>
               <h4 className="font-bold text-base text-gray-900">Add to Bag</h4>
@@ -285,7 +285,7 @@ const Offers = () => {
               </p>
             </div>
             <div className="space-y-2">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-lg flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-none bg-emerald-100 text-emerald-800 font-extrabold text-lg flex items-center justify-center mx-auto">
                 3
               </div>
               <h4 className="font-bold text-base text-gray-900">Instant Discount</h4>

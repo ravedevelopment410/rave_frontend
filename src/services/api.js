@@ -64,34 +64,9 @@ let FALLBACK_OFFERS = [
   },
 ];
 
-let FALLBACK_CONTACTS = [
-  {
-    _id: 'contact-1',
-    name: 'Elena Rostova',
-    email: 'elena.rostova@example.com',
-    phone: '+1 555-019-2834',
-    subject: 'Product Recommendation',
-    message: 'Hello, which of your herbal elixirs do you recommend for chronic stress and skin redness?',
-    status: 'New',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    _id: 'contact-2',
-    name: 'Liam Henderson',
-    email: 'liam.h@wellnessclub.org',
-    phone: '+1 555-438-9921',
-    subject: 'Wholesale & Partnerships',
-    message: 'We run a boutique eco-spa in Seattle and would love to carry your bulk loose-leaf teas and face serums.',
-    status: 'In Progress',
-    createdAt: new Date().toISOString(),
-  },
-];
+let FALLBACK_CONTACTS = [];
 
-let FALLBACK_SUBSCRIBERS = [
-  { _id: 'sub-1', email: 'clara.m@greenliving.com', createdAt: new Date().toISOString() },
-  { _id: 'sub-2', email: 'julian.vance@herbalcare.org', createdAt: new Date().toISOString() },
-  { _id: 'sub-3', email: 'serena.botanicals@gmail.com', createdAt: new Date().toISOString() },
-];
+let FALLBACK_SUBSCRIBERS = [];
 
 let FALLBACK_REVIEWS = [];
 
@@ -649,22 +624,110 @@ export const api = {
     }
   },
 
-  // Orders Management
+  // Razorpay Payment Gateway APIs
+  async getRazorpayKey() {
+    try {
+      const res = await fetch(`${API_BASE}/payment/get-key`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.keyId || '';
+      }
+    } catch (err) {
+      console.warn('Failed to fetch Razorpay key from backend:', err);
+    }
+    return '';
+  },
+
+  async createRazorpayOrder(amount, currency = 'INR', receipt = '') {
+    const res = await fetch(`${API_BASE}/payment/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, currency, receipt }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to initiate Razorpay order');
+    }
+    return data;
+  },
+
+  async verifyRazorpayPayment(verificationData) {
+    const res = await fetch(`${API_BASE}/payment/verify-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(verificationData),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || 'Payment signature verification failed');
+    }
+    return data;
+  },
+
+  // Orders Management (Synchronized with MongoDB & LocalStorage backup)
   async getOrders() {
+    try {
+      const res = await fetch(`${API_BASE}/orders`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          // Strictly filter out any dummy orders, only return genuine user orders
+          const serverOrders = data.data.filter(o => !isDummyOrder(o));
+          const localOrders = getStoredOrders();
+          const serverIds = new Set(serverOrders.map(o => o.orderId || o._id));
+          const uniqueLocal = localOrders.filter(o => !serverIds.has(o.orderId) && !serverIds.has(o._id) && !isDummyOrder(o));
+          return [...serverOrders, ...uniqueLocal];
+        }
+      }
+    } catch (err) {
+      console.warn('Backend orders fetch failed, falling back to local storage:', err);
+    }
     return getStoredOrders();
   },
 
   async createOrder(orderData) {
+    if (isDummyOrder(orderData)) return null;
+    const generatedId = orderData._id || `ord-${Date.now()}`;
     const newOrd = {
       ...orderData,
-      _id: orderData._id || `ord-${Date.now()}`,
+      _id: generatedId,
+      orderId: orderData.orderId || `ARAVEZ-ORD-${Math.floor(100000 + Math.random() * 900000)}`,
     };
+
+    try {
+      const res = await fetch(`${API_BASE}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrd),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.data && !isDummyOrder(data.data)) {
+          saveStoredOrder(data.data);
+          window.dispatchEvent(new Event('aravez_orders_updated'));
+          return data.data;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to save order to server directly, saving locally:', err);
+    }
+
     saveStoredOrder(newOrd);
     window.dispatchEvent(new Event('aravez_orders_updated'));
     return newOrd;
   },
 
   async updateOrderStatus(orderId, status) {
+    try {
+      await fetch(`${API_BASE}/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+    } catch (err) {
+      console.warn('Failed to update status on server:', err);
+    }
+
     const orders = getStoredOrders();
     const updated = orders.map(o => (o.orderId === orderId || o._id === orderId ? { ...o, status } : o));
     localStorage.setItem('aravez_placed_orders', JSON.stringify(updated));
@@ -673,6 +736,14 @@ export const api = {
   },
 
   async deleteOrder(orderId) {
+    try {
+      await fetch(`${API_BASE}/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.warn('Failed to delete order on server:', err);
+    }
+
     const orders = getStoredOrders();
     const updated = orders.filter(o => o.orderId !== orderId && o._id !== orderId);
     localStorage.setItem('aravez_placed_orders', JSON.stringify(updated));
@@ -780,56 +851,38 @@ export const api = {
   },
 };
 
-const SEED_ORDERS = [
-  {
-    _id: 'ord-1001',
-    orderId: 'ARAVEZ-ORD-882914',
-    customer: {
-      name: 'Dr. Alok Verma (Aura Corp)',
-      phone: '9814012345',
-      email: 'alok.verma@auracorp.in',
-      address: 'Plot 45, Industrial Area Phase 1, Chandigarh - 160002',
-    },
-    items: [
-      { name: 'Aravez Ultra 4K Laser Projector (6500 Lumens)', quantity: 1, price: 185000 },
-      { name: 'Professional Teleprompter System 17"', quantity: 1, price: 45000 }
-    ],
-    totalAmount: 230000,
-    paymentMethod: 'Online Payment (UPI)',
-    paymentStatus: 'PAID',
-    status: 'Processing',
-    createdAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    _id: 'ord-1002',
-    orderId: 'ARAVEZ-ORD-773120',
-    customer: {
-      name: 'Sunil Sharma',
-      phone: '9876543210',
-      email: 'sunil.sharma@gmail.com',
-      address: 'House No 1204, Sector 34-C, Chandigarh - 160022',
-    },
-    items: [
-      { name: 'Interactive Flat Panel 75" (4K UHD Touchbook)', quantity: 1, price: 125000 }
-    ],
-    totalAmount: 125000,
-    paymentMethod: 'Online Payment (Card)',
-    paymentStatus: 'PAID',
-    status: 'Shipped',
-    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-  }
-];
+export const isDummyOrder = (o) => {
+  if (!o) return true;
+  const dummyIds = ['ord-1001', 'ord-1002', 'ARAVEZ-ORD-882914', 'ARAVEZ-ORD-773120'];
+  if (dummyIds.includes(o._id) || dummyIds.includes(o.orderId)) return true;
+  const name = (o.customer?.name || '').toLowerCase();
+  if (name.includes('alok verma') || name.includes('sunil sharma') || name.includes('aura corp')) return true;
+  const email = (o.customer?.email || '').toLowerCase();
+  if (email.includes('alok.verma@auracorp.in') || email.includes('sunil.sharma@gmail.com')) return true;
+  return false;
+};
+
+const SEED_ORDERS = [];
 
 const getStoredOrders = () => {
   try {
     const raw = localStorage.getItem('aravez_placed_orders');
-    return raw ? JSON.parse(raw) : SEED_ORDERS;
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+    const cleaned = list.filter(o => !isDummyOrder(o));
+    // If dummy seed orders were stored in browser localStorage, clean them out permanently
+    if (cleaned.length !== list.length) {
+      localStorage.setItem('aravez_placed_orders', JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch (e) {
-    return SEED_ORDERS;
+    return [];
   }
 };
 
 const saveStoredOrder = (newOrder) => {
+  if (!newOrder || isDummyOrder(newOrder)) return;
   try {
     const existing = getStoredOrders();
     const updated = [newOrder, ...existing.filter(o => o._id !== newOrder._id && o.orderId !== newOrder.orderId)];

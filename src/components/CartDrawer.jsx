@@ -56,7 +56,7 @@ const CartDrawer = () => {
       .join('\n');
 
     const message = encodeURIComponent(
-      `🌿 *New Order for Aravez Botanicals*\n\n` +
+      `🖥️ *New Order Inquiry for Aravez (Rave Services)*\n\n` +
       `*Items:*\n${itemsText}\n\n` +
       `*Subtotal:* $${rawSubtotal.toFixed(2)}\n` +
       (appliedCoupon ? `*Discount (${appliedCoupon.code}):* -$${discountAmount.toFixed(2)}\n` : '') +
@@ -72,7 +72,7 @@ const CartDrawer = () => {
     <div className="fixed inset-0 z-50 overflow-hidden animate-fade-in">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-emerald-950/60 backdrop-blur-xs transition-opacity"
+        className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
         onClick={() => setIsCartOpen(false)}
       />
 
@@ -80,39 +80,37 @@ const CartDrawer = () => {
         <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between relative">
           
           {/* Header */}
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-emerald-50/50">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-emerald-700" />
-              <h2 className="font-serif text-lg font-bold text-gray-900">Your Shopping Bag</h2>
-              <span className="bg-emerald-200 text-emerald-900 text-xs font-extrabold px-2 py-0.5 rounded-full">
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-white">
+            <div className="flex items-center gap-2.5">
+              <ShoppingBag className="w-5 h-5 text-[#ea0028]" />
+              <h2 className="text-lg font-bold text-[#1d1d1d]">Your Shopping Bag</h2>
+              <span className="bg-[#ea0028] text-white text-xs font-extrabold px-2 py-0.5 rounded-none">
                 {cart.length}
               </span>
             </div>
             <button
               onClick={() => setIsCartOpen(false)}
-              className="p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-900 transition-colors"
+              className="p-2 rounded-none hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-
-
           {/* Cart Item List */}
           <div className="flex-1 overflow-y-auto p-6 divide-y divide-gray-100">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-12">
-                <div className="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+                <div className="w-20 h-20 rounded-none bg-red-50 text-[#ea0028] flex items-center justify-center mb-4">
                   <ShoppingBag className="w-10 h-10 stroke-1" />
                 </div>
-                <h3 className="font-serif text-xl font-bold text-gray-800 mb-1">Your bag is empty</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-1">Your bag is empty</h3>
                 <p className="text-xs text-gray-500 max-w-xs mb-6">
-                  Explore our pure organic serums, herbal teas and botanical remedies to begin your ritual.
+                  Explore our high-performance Interactive Panels, Projectors, Toughbook, Active LEDs, and VC Systems.
                 </p>
                 <Link
                   to="/products"
                   onClick={() => setIsCartOpen(false)}
-                  className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-6 py-3 rounded-full transition-colors flex items-center gap-2 shadow-md"
+                  className="bg-[#1d1d1d] hover:bg-[#ea0028] text-white text-xs font-bold px-6 py-3 rounded-none transition-colors flex items-center gap-2 shadow-sm"
                 >
                   <span>Explore Aravez Store</span>
                   <ArrowRight className="w-4 h-4" />
@@ -127,17 +125,17 @@ const CartDrawer = () => {
                       <img
                         src={item.image}
                         alt={item.name}
-                        className="w-18 h-18 sm:w-20 sm:h-20 object-cover rounded-2xl border border-emerald-100 bg-emerald-50 shrink-0"
+                        className="w-18 h-18 sm:w-20 sm:h-20 object-cover rounded-none border border-gray-200 bg-gray-50 shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="text-[10px] uppercase font-bold text-emerald-700 block">
+                        <span className="text-[10px] uppercase font-bold text-[#ea0028] block">
                           {item.category}
                         </span>
                         <h4 className="text-sm font-semibold text-gray-900 truncate">
                           {item.name}
                         </h4>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm font-bold text-emerald-950">
+                          <span className="text-sm font-bold text-[#1d1d1d]">
                             ₹{Number(price).toLocaleString('en-IN')}
                           </span>
                           {item.discountPrice && (
@@ -149,17 +147,17 @@ const CartDrawer = () => {
 
                         {/* Quantity Controller */}
                         <div className="flex items-center gap-3 mt-2">
-                          <div className="flex items-center border border-gray-200 rounded-lg bg-gray-50">
+                          <div className="flex items-center border border-gray-200 rounded-none bg-gray-50">
                             <button
                               onClick={() => updateQuantity(item._id, item.quantity - 1)}
-                              className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-black font-bold"
+                              className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-[#ea0028] font-bold"
                             >
                               <Minus className="w-3 h-3" />
                             </button>
                             <span className="w-6 text-center text-xs font-bold">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(item._id, item.quantity + 1)}
-                              className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-black font-bold"
+                              className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-[#ea0028] font-bold"
                             >
                               <Plus className="w-3 h-3" />
                             </button>
@@ -167,7 +165,7 @@ const CartDrawer = () => {
 
                           <button
                             onClick={() => removeFromCart(item._id)}
-                            className="text-gray-400 hover:text-rose-500 transition-colors p-1"
+                            className="text-gray-400 hover:text-[#ea0028] transition-colors p-1"
                             aria-label="Remove item"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -183,9 +181,7 @@ const CartDrawer = () => {
 
           {/* Footer & Checkout Area */}
           {cart.length > 0 && (
-            <div className="p-6 border-t border-gray-100 bg-gray-50/50 space-y-4">
-
-
+            <div className="p-6 border-t border-gray-200 bg-gray-50/50 space-y-4">
               {/* Price Breakdown */}
               <div className="space-y-1.5 text-xs text-gray-600 pt-2">
                 <div className="flex justify-between">
@@ -193,20 +189,20 @@ const CartDrawer = () => {
                   <span className="font-semibold text-gray-800">₹{rawSubtotal.toLocaleString('en-IN')}</span>
                 </div>
                 {appliedCoupon && (
-                  <div className="flex justify-between text-emerald-700 font-medium">
+                  <div className="flex justify-between text-[#ea0028] font-medium">
                     <span>Coupon Discount</span>
                     <span>-₹{discountAmount.toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span className={shippingFee === 0 ? 'text-emerald-700 font-semibold' : 'text-gray-800'}>
+                  <span className={shippingFee === 0 ? 'text-[#ea0028] font-semibold' : 'text-gray-800'}>
                     {shippingFee === 0 ? 'FREE' : `₹${shippingFee.toLocaleString('en-IN')}`}
                   </span>
                 </div>
                 <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200">
                   <span>Total</span>
-                  <span className="text-emerald-900">₹{finalTotal.toLocaleString('en-IN')}</span>
+                  <span className="text-[#1d1d1d] font-extrabold">₹{finalTotal.toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
@@ -217,7 +213,7 @@ const CartDrawer = () => {
                     setIsCartOpen(false);
                     setIsCheckoutModalOpen(true);
                   }}
-                  className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3.5 px-4 rounded-2xl shadow-lg shadow-emerald-800/20 transition-all flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  className="w-full bg-[#1d1d1d] hover:bg-[#ea0028] text-white font-bold py-3.5 px-4 rounded-none shadow-md transition-all flex items-center justify-center gap-2 hover:scale-[1.01] cursor-pointer"
                 >
                   <span>Proceed to Secure Checkout</span>
                   <ArrowRight className="w-4 h-4" />
