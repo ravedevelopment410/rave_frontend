@@ -35,11 +35,12 @@ const Navbar = () => {
           {/* Primary Track */}
           <div className="flex items-center gap-10 shrink-0 px-4">
             {[1, 2, 3].map((item) => (
-              <div key={`ticker-a-${item}`} className="flex items-center gap-3">
+              <div key={`ticker-a-${item}`} className="flex items-center gap-2.5">
                 <Sparkles className="w-3.5 h-3.5 text-white shrink-0 animate-pulse" />
-                <span className="font-bold tracking-wide text-white">⚡ RAVE SERVICES:</span>
-                <span className="text-white/95 font-medium">Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!</span>
-                <span className="text-white/70 font-bold ml-6">✦</span>
+                <span className="font-mont text-xs sm:text-[13px] font-semibold tracking-normal text-white">
+                  ⚡ RAVE SERVICES: Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!
+                </span>
+                <span className="text-white/80 font-bold ml-6">✦</span>
               </div>
             ))}
           </div>
@@ -47,11 +48,12 @@ const Navbar = () => {
           {/* Secondary Track (Seamless Loop) */}
           <div className="flex items-center gap-10 shrink-0 px-4" aria-hidden="true">
             {[1, 2, 3].map((item) => (
-              <div key={`ticker-b-${item}`} className="flex items-center gap-3">
+              <div key={`ticker-b-${item}`} className="flex items-center gap-2.5">
                 <Sparkles className="w-3.5 h-3.5 text-white shrink-0 animate-pulse" />
-                <span className="font-bold tracking-wide text-white">⚡ RAVE SERVICES:</span>
-                <span className="text-white/95 font-medium">Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!</span>
-                <span className="text-white/70 font-bold ml-6">✦</span>
+                <span className="font-mont text-xs sm:text-[13px] font-semibold tracking-normal text-white">
+                  ⚡ RAVE SERVICES: Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!
+                </span>
+                <span className="text-white/80 font-bold ml-6">✦</span>
               </div>
             ))}
           </div>
