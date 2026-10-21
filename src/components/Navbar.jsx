@@ -30,16 +30,16 @@ const Navbar = () => {
   return (
     <>
       {/* Top Banner Announcement (Moving Marquee: Right to Left) */}
-      <div className="bg-[#1d1d1d] text-white text-xs font-medium py-2 overflow-hidden border-b border-gray-800 select-none relative z-50">
+      <div className="bg-[#ea0028] text-white text-xs font-medium py-2 overflow-hidden border-b border-[#cc0020] select-none relative z-50 shadow-xs">
         <div className="animate-marquee">
           {/* Primary Track */}
           <div className="flex items-center gap-10 shrink-0 px-4">
             {[1, 2, 3].map((item) => (
               <div key={`ticker-a-${item}`} className="flex items-center gap-3">
-                <Sparkles className="w-3.5 h-3.5 text-[#ea0028] shrink-0 animate-pulse" />
-                <span className="font-semibold tracking-wide text-white">⚡ RAVE SERVICES:</span>
-                <span className="text-gray-200">Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!</span>
-                <span className="text-[#ea0028] font-bold ml-6">✦</span>
+                <Sparkles className="w-3.5 h-3.5 text-white shrink-0 animate-pulse" />
+                <span className="font-bold tracking-wide text-white">⚡ RAVE SERVICES:</span>
+                <span className="text-white/95 font-medium">Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!</span>
+                <span className="text-white/70 font-bold ml-6">✦</span>
               </div>
             ))}
           </div>
@@ -48,10 +48,10 @@ const Navbar = () => {
           <div className="flex items-center gap-10 shrink-0 px-4" aria-hidden="true">
             {[1, 2, 3].map((item) => (
               <div key={`ticker-b-${item}`} className="flex items-center gap-3">
-                <Sparkles className="w-3.5 h-3.5 text-[#ea0028] shrink-0 animate-pulse" />
-                <span className="font-semibold tracking-wide text-white">⚡ RAVE SERVICES:</span>
-                <span className="text-gray-200">Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!</span>
-                <span className="text-[#ea0028] font-bold ml-6">✦</span>
+                <Sparkles className="w-3.5 h-3.5 text-white shrink-0 animate-pulse" />
+                <span className="font-bold tracking-wide text-white">⚡ RAVE SERVICES:</span>
+                <span className="text-white/95 font-medium">Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!</span>
+                <span className="text-white/70 font-bold ml-6">✦</span>
               </div>
             ))}
           </div>
