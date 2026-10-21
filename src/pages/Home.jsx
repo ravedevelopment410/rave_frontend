@@ -71,9 +71,13 @@ const Home = () => {
       {/* 4. FEATURED PRODUCTS WITH FILTER TABS */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-10">
-          <span className="text-xs font-bold text-[#ea0028] uppercase tracking-widest block mb-1">
-            RAVE SERVICES
-          </span>
+          <div className="flex justify-center mb-3">
+            <img
+              src="/rave-services-logo.png"
+              alt="Rave Services"
+              className="h-10 sm:h-12 w-auto object-contain"
+            />
+          </div>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900">
             Featured Audio-Visual & Display Products
           </h2>
