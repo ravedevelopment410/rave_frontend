@@ -64,13 +64,13 @@ const Navbar = () => {
           <div className="flex items-center justify-between h-20">
             {/* AraveZ Brand Typography in Mont (Inverted V 'Λ') */}
             <Link to="/" aria-label="AraveZ" className="flex items-baseline group select-none py-1 font-mont">
-              <span className="text-4xl sm:text-5xl font-black text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-wide">
+              <span className="text-4xl sm:text-5xl font-black text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-tight">
                 Λ
               </span>
-              <span className="text-base sm:text-lg font-bold text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-[0.08em] mx-1 pl-0.5">
+              <span className="text-base sm:text-lg font-bold text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-tight -ml-0.5 -mr-0.5">
                 rave
               </span>
-              <span className="text-4xl sm:text-5xl font-black text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-wide">
+              <span className="text-4xl sm:text-5xl font-black text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-tight">
                 Z
               </span>
             </Link>
