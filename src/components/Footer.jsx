@@ -11,13 +11,13 @@ const Footer = () => {
           {/* Brand Info */}
           <div className="lg:col-span-2 space-y-4">
             <Link to="/" aria-label="AraveZ" className="flex items-baseline group select-none py-1 font-mont">
-              <span className="text-4xl sm:text-5xl font-black text-white group-hover:text-[#ea0028] transition-colors font-mont tracking-tight">
+              <span className="text-4xl sm:text-5xl font-black text-white group-hover:text-[#ea0028] transition-colors font-mont tracking-normal">
                 Λ
               </span>
-              <span className="text-base sm:text-lg font-bold text-[#ea0028] group-hover:text-white transition-colors font-mont tracking-tight -ml-0.5 -mr-0.5">
+              <span className="text-base sm:text-lg font-bold text-[#ea0028] group-hover:text-white transition-colors font-mont tracking-normal mx-0.5">
                 rave
               </span>
-              <span className="text-4xl sm:text-5xl font-black text-white group-hover:text-[#ea0028] transition-colors font-mont tracking-tight">
+              <span className="text-4xl sm:text-5xl font-black text-white group-hover:text-[#ea0028] transition-colors font-mont tracking-normal">
                 Z
               </span>
             </Link>
