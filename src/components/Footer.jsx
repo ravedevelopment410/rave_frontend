@@ -14,7 +14,7 @@ const Footer = () => {
               <span className="text-4xl sm:text-5xl font-black text-white group-hover:text-[#ea0028] transition-colors font-mont tracking-normal">
                 Λ
               </span>
-              <span className="text-base sm:text-lg font-bold text-[#ea0028] group-hover:text-white transition-colors font-mont tracking-normal -ml-[1px] -mr-[1.5px]">
+              <span className="text-xs sm:text-sm font-bold text-[#ea0028] group-hover:text-white transition-colors font-mont tracking-normal -ml-[1px] -mr-[1px]">
                 rave
               </span>
               <span className="text-4xl sm:text-5xl font-black text-white group-hover:text-[#ea0028] transition-colors font-mont tracking-normal">
