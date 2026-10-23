@@ -30,17 +30,17 @@ const Navbar = () => {
   return (
     <>
       {/* Top Banner Announcement (Moving Marquee: Right to Left) */}
-      <div className="bg-[#ea0028] text-white text-xs font-medium py-2 overflow-hidden border-b border-[#cc0020] select-none relative z-50 shadow-xs">
+      <div className="bg-[#ea0028] text-white py-2.5 overflow-hidden border-b border-[#cc0020] select-none relative z-50 shadow-xs">
         <div className="animate-marquee">
           {/* Primary Track */}
           <div className="flex items-center gap-10 shrink-0 px-4">
             {[1, 2, 3].map((item) => (
               <div key={`ticker-a-${item}`} className="flex items-center gap-2.5">
-                <Sparkles className="w-3.5 h-3.5 text-white shrink-0 animate-pulse" />
-                <span className="font-mont text-xs sm:text-[13px] font-semibold tracking-normal text-white">
-                  ⚡ RAVE SERVICES: Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!
+                <Sparkles className="w-4 h-4 text-white shrink-0 animate-pulse" />
+                <span className="font-mont text-sm sm:text-[15px] font-semibold tracking-normal text-white">
+                  ⚡ RAVE SERVICES: Authorized Distributor of Toughbook, Interactive Panels, Projectors &amp; VC Systems!
                 </span>
-                <span className="text-white/80 font-bold ml-6">✦</span>
+                <span className="text-white/80 font-bold ml-6 text-sm">✦</span>
               </div>
             ))}
           </div>
@@ -49,11 +49,11 @@ const Navbar = () => {
           <div className="flex items-center gap-10 shrink-0 px-4" aria-hidden="true">
             {[1, 2, 3].map((item) => (
               <div key={`ticker-b-${item}`} className="flex items-center gap-2.5">
-                <Sparkles className="w-3.5 h-3.5 text-white shrink-0 animate-pulse" />
-                <span className="font-mont text-xs sm:text-[13px] font-semibold tracking-normal text-white">
+                <Sparkles className="w-4 h-4 text-white shrink-0 animate-pulse" />
+                <span className="font-mont text-sm sm:text-[15px] font-semibold tracking-normal text-white">
                   ⚡ RAVE SERVICES: Authorized Distributor of Touchbooks, Interactive Panels, Projectors &amp; VC Systems!
                 </span>
-                <span className="text-white/80 font-bold ml-6">✦</span>
+                <span className="text-white/80 font-bold ml-6 text-sm">✦</span>
               </div>
             ))}
           </div>
@@ -69,7 +69,7 @@ const Navbar = () => {
               <span className="text-4xl sm:text-5xl font-black text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-normal">
                 Λ
               </span>
-              <span className="text-base sm:text-lg font-bold text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-normal mx-0.5">
+              <span className="text-base sm:text-lg font-bold text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-normal -ml-[1px] -mr-[1.5px]">
                 rave
               </span>
               <span className="text-4xl sm:text-5xl font-black text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-normal">
