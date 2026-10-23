@@ -69,7 +69,7 @@ const Navbar = () => {
               <span className="text-4xl sm:text-5xl font-black text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-normal">
                 Λ
               </span>
-              <span className="text-xs sm:text-sm font-bold text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-normal -ml-[1px] -mr-[1px]">
+              <span className="text-xs sm:text-sm font-medium text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-normal -ml-[1px] -mr-[1px]">
                 rave
               </span>
               <span className="text-4xl sm:text-5xl font-black text-[#1d1d1d] group-hover:text-[#ea0028] transition-colors font-mont tracking-normal">
